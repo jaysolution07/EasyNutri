@@ -162,6 +162,163 @@
 #iosGuide .ios-step { display:flex; align-items:center; gap:12px; font-size:13px; color:var(--text2); margin-bottom:10px; }
 #iosGuide .ios-step .num { width:26px; height:26px; border-radius:50%; background:var(--grad); color:white; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 #iosGuide .ios-close { margin-top:6px; width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; }
+
+  /* ═══════════════════════════════════════════════
+     RESPONSIVE — TABLET & MOBILE
+     Injected styles — aucun HTML modifié
+  ═══════════════════════════════════════════════ */
+
+  /* ── TABLET (≤ 1024px) ── */
+  @media (max-width: 1024px) {
+    .sidebar { width: 180px; padding: 20px 8px; }
+    .main { margin-left: 180px; padding: 24px 20px; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .nutri-cards { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* ── MOBILE (≤ 768px) ── */
+  @media (max-width: 768px) {
+    /* Header */
+    .header { padding: 0 16px; gap: 10px; height: 60px; }
+    .logo-text { font-size: 18px; }
+    .logo-sub { display: none; }
+    #userLabel { display: none !important; }
+    #btnLogout { padding: 5px 10px; font-size: 10px; }
+    #statusDot { font-size: 10px; padding: 2px 7px; }
+
+    /* Sidebar → bottom nav bar */
+    .sidebar {
+      width: 100%;
+      top: auto;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 8px;
+      border-right: none;
+      border-top: 1px solid var(--border);
+      gap: 0;
+      overflow: visible;
+      z-index: 99;
+    }
+    /* Hide sidebar extras, keep only the 3 main nav items */
+    .nav-section { display: none; }
+    #categorieNav { display: none; }
+    #cat-filter-all { display: none; }
+    .sidebar .divider { display: none; }
+    /* Hide the "Catégories" label+button row inside sidebar */
+    .sidebar > div:not(.nav-item):not(#categorieNav) { display: none; }
+
+    .nav-item {
+      flex-direction: column;
+      gap: 3px;
+      padding: 6px 10px;
+      font-size: 9px;
+      border-radius: 10px;
+      flex: 1;
+      justify-content: center;
+      text-align: center;
+    }
+    .nav-item .icon { font-size: 20px; }
+
+    /* Main layout */
+    .layout { padding-top: 60px; }
+    .main { margin-left: 0; padding: 16px 12px 80px; }
+
+    /* Page header */
+    .page-header { flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .page-title { font-size: 22px; }
+    .page-header > .btn { width: 100%; justify-content: center; }
+
+    /* Cards */
+    .card-header { flex-wrap: wrap; gap: 8px; padding: 14px 16px 12px; }
+    .card-body { padding: 14px 16px; }
+    .card-header .flex { flex-wrap: wrap; width: 100%; gap: 6px; }
+    .card-header .flex .form-select,
+    .card-header .flex .search-wrap { width: 100% !important; }
+    .card-header .search-wrap input { width: 100%; }
+
+    /* Grid */
+    .grid-2 { grid-template-columns: 1fr; gap: 16px; }
+
+    /* Tables scroll horizontally */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 520px; }
+    th, td { padding: 10px 10px; font-size: 12.5px; }
+
+    /* Ingredient rows in editor */
+    .ing-row { grid-template-columns: 1fr 80px auto auto; gap: 6px; }
+
+    /* Nutri cards 2 columns */
+    .nutri-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .nutri-card .val { font-size: 18px; }
+
+    /* Prix bandeau wraps */
+    #prixBandeau { flex-wrap: wrap; gap: 12px; padding: 10px 12px; }
+
+    /* Form rows single column */
+    .form-row { grid-template-columns: 1fr; }
+
+    /* Modals */
+    .modal { padding: 20px 18px; border-radius: 16px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-size: 18px; margin-bottom: 16px; }
+    .modal-actions { flex-wrap: wrap; gap: 8px; }
+    .modal-actions .btn { flex: 1; justify-content: center; min-width: 100px; }
+
+    /* Allergenes 2 col on mobile */
+    #allergenesCheckboxes { grid-template-columns: 1fr 1fr; gap: 5px 10px; }
+
+    /* Etiquetage */
+    .etiq-preview { padding: 12px; }
+    .etiq-preview-text { font-size: 12px; }
+
+    /* Empty states */
+    .empty { padding: 32px 16px; }
+
+    /* Type toggle */
+    .type-toggle { flex-wrap: wrap; }
+    .type-chip { flex: 1; text-align: center; }
+
+    /* Compose ingredient rows */
+    #composeIngredients .ing-row { grid-template-columns: 1fr 80px auto; }
+
+    /* PWA banner: stay above bottom nav */
+    #pwaBanner { bottom: 60px; }
+    #iosGuide { bottom: 60px; }
+
+    /* Toast: lift above bottom nav */
+    .toast { bottom: 80px; right: 16px; left: 16px; justify-content: center; }
+
+    /* Login */
+    #loginPage > div { padding: 28px 20px; }
+
+    /* Editor save/cancel buttons */
+    #recetteEditor .flex.gap-2.mt-3 { flex-wrap: wrap; }
+    #recetteEditor .flex.gap-2.mt-3 .btn { flex: 1; justify-content: center; }
+  }
+
+  /* ── SMALL MOBILE (≤ 480px) ── */
+  @media (max-width: 480px) {
+    .main { padding: 12px 10px 80px; }
+    .page-title { font-size: 20px; }
+    .nutri-cards { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .nutri-card { padding: 10px 8px; }
+    .nutri-card .val { font-size: 16px; }
+    .card-header { padding: 12px 12px 10px; }
+    .card-body { padding: 12px 12px; }
+    th, td { padding: 8px 8px; font-size: 12px; }
+    .modal { padding: 16px 14px; }
+    #allergenesCheckboxes { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .ing-row { grid-template-columns: 1fr 72px auto; }
+    .btn { font-size: 12px; padding: 8px 12px; }
+    .logo-mark { width: 34px; height: 34px; font-size: 17px; }
+    .header { height: 56px; }
+    .layout { padding-top: 56px; }
+  }
 </style>
 </head>
 <body>
@@ -998,8 +1155,6 @@ function computeEtiquetage() {
         });
       } else { add(ing.nom, poids, allergs, row.quid, true, false, ing.id); }
     } else {
-      // Composé non éclaté : le nom du composé ne doit PAS être marqué allergène
-      // (les allergènes apparaissent déjà sur les sous-ingrédients entre parenthèses)
       const allergsForMap = ing.type === 'compose' ? [] : allergs;
       add(ing.nom, poids, allergsForMap, row.quid, ing.type==='compose', false, ing.id);
     }
@@ -1013,13 +1168,11 @@ function renderEtiquetage() {
   if (!items.length) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   el.innerHTML = items.map(e => {
-    // Nom de base (composé → avec sous-ingrédients entre parenthèses)
     let nomBase = escHtml(e.nom);
     if (e.isCompose && !e.eclater && e.ingId) {
       const ing = ING.find(x=>x.id==e.ingId);
       const subs = ing ? getSubsForIng(ing) : null;
       if (subs?.length) {
-        // Construire les sous-noms : gras+souligné si allergène, normal sinon
         const subParts = subs.map(s => {
           const sub = ING.find(x=>x.id==s.ingredient);
           if (!sub) return '?';
@@ -1029,7 +1182,6 @@ function renderEtiquetage() {
         nomBase += ` <span style="color:var(--text3)">(${subParts.join(', ')})</span>`;
       }
     }
-    // Le nom principal : gras+souligné seulement s'il est lui-même allergène
     const nomHtml = e.allergs.length ? `<span class="etiq-allergen">${nomBase}</span>` : nomBase;
     const pctHtml = e.quid ? ` <span class="etiq-pct">(${e.pct}%)</span>` : '';
     return nomHtml + pctHtml;
@@ -1076,17 +1228,13 @@ async function save() {
     await fetch(API, { method:'POST', body: JSON.stringify({ action:'saveRecette', id:RECETTE.id, nom, categorie, ingredients: RECETTE.ingredients.map(i=>({ingredient:i.ingredient,poids:i.poids,eclater:i.eclater?1:0,quid:i.quid?1:0})) }) });
     toast('Recette sauvegardée ✓', 'success');
     await loadRecettes();
-    // Restaurer la catégorie dans le select après le rechargement
-    // (loadRecettes → refreshCategorieSelects réinitialise les options)
     const catSel = document.getElementById('recetteCategorie');
     if (categorie) {
-      // S'assurer que l'option existe (elle doit être dans CATEGORIES maintenant)
       if (![...catSel.options].some(o => o.value === categorie)) {
         catSel.innerHTML += `<option value="${escHtml(categorie)}">${escHtml(categorie)}</option>`;
       }
       catSel.value = categorie;
     }
-    // Mettre à jour l'id si nouvelle recette (l'API a créé l'id)
     if (isNew) {
       const created = RECETTES.find(r => r.nom === nom && r.categorie === categorie);
       if (created) RECETTE.id = created.id;
@@ -1489,9 +1637,3 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
-
-
-
-
-
-
