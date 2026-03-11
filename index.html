@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" id="pwa-manifest">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="EasyNutri">
+<meta name="theme-color" content="#1f8c88">
+<meta name="mobile-web-app-capable" content="yes">
 <title>EasyNutri</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
@@ -141,6 +148,20 @@
   .flex { display: flex; } .items-center { align-items: center; } .gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .ml-auto { margin-left: auto; } .mt-2 { margin-top: 8px; } .mt-3 { margin-top: 12px; } .text-sm { font-size: 12px; } .text-xs { font-size: 11px; } .text-muted { color: var(--text3); } .w-full { width: 100%; }
   .accent-bar { height: 3px; background: var(--grad); border-radius: 0 0 3px 3px; }
   ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+#pwaBanner { position:fixed; bottom:0; left:0; right:0; z-index:9999; background:white; border-top:2px solid var(--border); box-shadow:0 -8px 32px rgba(31,140,136,0.18); padding:14px 20px; display:flex; align-items:center; gap:14px; transform:translateY(100%); transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+#pwaBanner.show { transform:translateY(0); }
+#pwaBanner .pwa-logo { width:48px; height:48px; border-radius:14px; object-fit:cover; flex-shrink:0; box-shadow:0 4px 12px rgba(31,140,136,0.2); }
+#pwaBanner .pwa-text { flex:1; }
+#pwaBanner .pwa-title { font-weight:700; font-size:14px; color:var(--text); }
+#pwaBanner .pwa-sub { font-size:11.5px; color:var(--text3); margin-top:2px; }
+#pwaBanner .pwa-btn-install { background:var(--grad); color:white; border:none; padding:9px 18px; border-radius:9px; font-family:'Sora',sans-serif; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 4px 12px rgba(31,140,136,0.3); flex-shrink:0; }
+#pwaBanner .pwa-btn-close { background:none; border:none; color:var(--text3); font-size:18px; cursor:pointer; padding:4px 8px; flex-shrink:0; }
+#iosGuide { position:fixed; bottom:0; left:0; right:0; z-index:9999; background:white; border-top:2px solid var(--border); box-shadow:0 -8px 32px rgba(31,140,136,0.18); padding:20px; display:none; }
+#iosGuide.show { display:block; }
+#iosGuide .ios-title { font-weight:700; font-size:15px; color:var(--text); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+#iosGuide .ios-step { display:flex; align-items:center; gap:12px; font-size:13px; color:var(--text2); margin-bottom:10px; }
+#iosGuide .ios-step .num { width:26px; height:26px; border-radius:50%; background:var(--grad); color:white; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+#iosGuide .ios-close { margin-top:6px; width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; }
 </style>
 </head>
 <body>
@@ -163,7 +184,7 @@
   <div style="background:white;border-radius:24px;padding:40px 36px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(31,140,136,0.15);border:1px solid var(--border)">
     <div style="display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:32px">
       <div style="width:56px;height:56px;background:var(--grad);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px">🍃</div>
-      <div style="font-family:'DM Serif Display',serif;font-size:26px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">EazyNutri</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:26px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">EasyNutri</div>
       <div style="font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">by JaySolution</div>
     </div>
     <div class="form-group">
@@ -498,7 +519,7 @@
 // ── MASTER URL (EasyMaster — ne jamais changer) ──
 const MASTER_API = 'https://script.google.com/macros/s/AKfycbyd_ezVlZhDIzl_4PFXJoZOews6bA4zx5-y8UgPKe_DA68tCS9VIAioK5j50a1boaJ2cA/exec';
 // ── API dynamique selon le compte connecté ──
-let API = localStorage.getItem('eazynutri_api') || '';
+let API = localStorage.getItem('easynutri_api') || '';
 let ING = [], RECETTES = [], FOURN = [], fournFiltered = [];
 let RECETTE = { id: null, ingredients: [], categorie: '' };
 let currentIngType = 'simple', composeRows = [];
@@ -1354,8 +1375,8 @@ async function doLogin() {
       btn.classList.remove('loading'); btn.innerHTML = 'Se connecter'; btn.disabled = false;
       return;
     }
-    localStorage.setItem('eazynutri_api', data.webapp_url);
-    localStorage.setItem('eazynutri_user', email);
+    localStorage.setItem('easynutri_api', data.webapp_url);
+    localStorage.setItem('easynutri_user', email);
     API = data.webapp_url;
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('userLabel').textContent = email;
@@ -1371,15 +1392,15 @@ async function doLogin() {
 
 function logout() {
   if (!confirm('Se déconnecter ?')) return;
-  localStorage.removeItem('eazynutri_api');
-  localStorage.removeItem('eazynutri_user');
+  localStorage.removeItem('easynutri_api');
+  localStorage.removeItem('easynutri_user');
   location.reload();
 }
 
 // ── DÉMARRAGE ──
 (function() {
-  const savedApi  = localStorage.getItem('eazynutri_api');
-  const savedUser = localStorage.getItem('eazynutri_user');
+  const savedApi  = localStorage.getItem('easynutri_api');
+  const savedUser = localStorage.getItem('easynutri_user');
   if (savedApi) {
     API = savedApi;
     document.getElementById('loginPage').style.display = 'none';
@@ -1392,5 +1413,98 @@ function logout() {
   }
 })();
 </script>
+<!-- PWA BANNER -->
+<div id="pwaBanner">
+  <img class="pwa-logo" src="https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png" alt="EasyNutri" onerror="this.style.display='none'">
+  <div class="pwa-text">
+    <div class="pwa-title">Installer EasyNutri</div>
+    <div class="pwa-sub" id="pwaBannerSub">Accédez à l'app depuis votre écran d'accueil</div>
+  </div>
+  <button class="pwa-btn-install" id="pwaBtnInstall" onclick="pwaInstall()">Installer</button>
+  <button class="pwa-btn-close" onclick="pwaDismiss()">✕</button>
+</div>
+
+<!-- GUIDE IOS -->
+<div id="iosGuide">
+  <div class="ios-title">
+    <img src="https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png" style="width:32px;height:32px;border-radius:10px;object-fit:cover" onerror="this.style.display='none'">
+    Installer EasyNutri sur iPhone / iPad
+  </div>
+  <div class="ios-step"><div class="num">1</div><span>Appuyez sur <strong>le bouton Partager</strong> ⬆️ en bas de Safari</span></div>
+  <div class="ios-step"><div class="num">2</div><span>Faites défiler et appuyez sur <strong>« Sur l'écran d'accueil »</strong> ➕</span></div>
+  <div class="ios-step"><div class="num">3</div><span>Appuyez sur <strong>« Ajouter »</strong> en haut à droite</span></div>
+  <button class="ios-close" onclick="iosDismiss()">Compris !</button>
+</div>
+
+<script>
+(function() {
+  const LOGO = 'https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png';
+  const DISMISSED_KEY = 'easynutri_pwa_dismissed';
+
+  // Manifest inline via Blob
+  const manifest = {
+    name: 'EasyNutri', short_name: 'EasyNutri',
+    start_url: location.href, display: 'standalone',
+    background_color: '#ffffff', theme_color: '#1f8c88',
+    icons: [
+      { src: LOGO, sizes: '192x192', type: 'image/png' },
+      { src: LOGO, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+    ]
+  };
+  const mBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  document.getElementById('pwa-manifest').href = URL.createObjectURL(mBlob);
+
+  // Service Worker minimal via Blob
+  if ('serviceWorker' in navigator) {
+    const sw = `self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>clients.claim());self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>new Response(''))));`;
+    const swBlob = new Blob([sw], {type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob), {scope:'/'}).catch(()=>{});
+  }
+
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (isStandalone || localStorage.getItem(DISMISSED_KEY) === '1') return;
+
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferredPrompt = e;
+    setTimeout(showBanner, 2500);
+  });
+  if (isIOS) setTimeout(showBanner, 2500);
+
+  function showBanner() {
+    if (isIOS) {
+      document.getElementById('pwaBtnInstall').textContent = 'Voir comment';
+      document.getElementById('pwaBannerSub').textContent = "Ajoutez l'app à votre écran d'accueil";
+    }
+    document.getElementById('pwaBanner').classList.add('show');
+  }
+
+  window.pwaInstall = function() {
+    if (isIOS) {
+      document.getElementById('pwaBanner').classList.remove('show');
+      document.getElementById('iosGuide').classList.add('show');
+      return;
+    }
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(r => { if (r.outcome==='accepted') pwaDismiss(); deferredPrompt=null; });
+    }
+  };
+  window.pwaDismiss = function() {
+    document.getElementById('pwaBanner').classList.remove('show');
+    localStorage.setItem(DISMISSED_KEY, '1');
+  };
+  window.iosDismiss = function() {
+    document.getElementById('iosGuide').classList.remove('show');
+    localStorage.setItem(DISMISSED_KEY, '1');
+  };
+})();
+</script>
+
 </body>
 </html>
+
+
+
