@@ -163,264 +163,232 @@
 #iosGuide .ios-step .num { width:26px; height:26px; border-radius:50%; background:var(--grad); color:white; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 #iosGuide .ios-close { margin-top:6px; width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; }
 
-  /* ═══════════════════════════════════════════════════════════
-     RESPONSIVE PREMIUM — TABLET & MOBILE
-     Menu burger + drawer + FAB — zéro HTML modifié
-  ═══════════════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════════════════
+     RESPONSIVE v3 — TABLET & MOBILE
+     Burger drawer + FAB + table fix + header fix
+  ══════════════════════════════════════════════════════════════ */
 
-  /* ── BURGER BUTTON (caché sur desktop) ── */
+  /* ── Burger (masqué sur desktop) ── */
   #burgerBtn {
     display: none;
     align-items: center; justify-content: center;
-    width: 38px; height: 38px;
+    width: 40px; height: 40px;
     border: none; background: none;
     cursor: pointer; border-radius: 10px;
-    color: var(--text2);
-    flex-shrink: 0;
+    color: var(--text2); flex-shrink: 0;
     transition: background 0.15s;
+    z-index: 101;
   }
   #burgerBtn:hover { background: var(--surface2); }
-  #burgerBtn svg { display: block; }
 
-  /* ── DRAWER OVERLAY ── */
+  /* ── Drawer overlay ── */
   #drawerOverlay {
-    display: none;
-    position: fixed; inset: 0; z-index: 149;
-    background: rgba(20,40,30,0.45);
-    backdrop-filter: blur(3px);
-    opacity: 0;
-    transition: opacity 0.28s ease;
+    display: none; position: fixed; inset: 0; z-index: 149;
+    background: rgba(15,30,22,0.5); backdrop-filter: blur(4px);
+    opacity: 0; transition: opacity 0.25s ease;
   }
   #drawerOverlay.open { opacity: 1; }
 
   /* ── FAB ── */
   #fab {
-    display: none;
-    position: fixed;
-    bottom: 28px; right: 20px;
-    z-index: 120;
-    width: 56px; height: 56px;
-    border-radius: 18px;
-    border: none;
-    background: var(--grad);
-    color: white;
-    font-size: 26px;
-    font-weight: 300;
-    line-height: 1;
+    display: none; position: fixed;
+    bottom: 24px; right: 18px; z-index: 120;
+    width: 56px; height: 56px; border-radius: 18px;
+    border: none; background: var(--grad); color: white;
+    font-size: 28px; font-weight: 300; line-height: 1;
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(31,140,136,0.38);
-    transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s;
+    box-shadow: 0 6px 20px rgba(31,140,136,0.4);
+    transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
     align-items: center; justify-content: center;
   }
-  #fab:active { transform: scale(0.93); box-shadow: 0 4px 12px rgba(31,140,136,0.3); }
+  #fab:active { transform: scale(0.9); }
 
-  /* ── TABLET (≤ 1024px) ── */
+  /* ── Drawer logout (injecté par JS) ── */
+  .drawer-logout-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 20px; margin: 2px 8px;
+    border-radius: 10px; cursor: pointer;
+    font-size: 13.5px; font-weight: 500; color: var(--danger);
+    border: none; background: none; width: calc(100% - 16px);
+    font-family: 'Sora', sans-serif; transition: background 0.15s;
+  }
+  .drawer-logout-item:hover { background: rgba(224,92,92,0.07); }
+
+  /* ── TABLET ≤ 1024px ── */
   @media (max-width: 1024px) {
     .sidebar { width: 200px; padding: 20px 10px; }
-    .main { margin-left: 200px; padding: 28px 24px; }
+    .main { margin-left: 200px; padding: 28px 22px; }
     .grid-2 { grid-template-columns: 1fr; gap: 20px; }
     .nutri-cards { grid-template-columns: repeat(3, 1fr); }
     .card-header .flex { flex-wrap: wrap; gap: 6px; }
   }
 
-  /* ── MOBILE (≤ 768px) ── */
+  /* ── MOBILE ≤ 768px ── */
   @media (max-width: 768px) {
 
-    /* ─ Header ─ */
+    /* Header : burger gauche | logo centre | status droite */
     .header {
-      padding: 0 14px;
-      height: 58px;
-      justify-content: space-between;
+      padding: 0 12px 0 8px;
+      height: 56px;
+      gap: 0;
     }
     #burgerBtn { display: flex; }
-    .logo-sub { display: none; }
-    .logo-text { font-size: 19px; }
-    /* Centre le logo */
-    .header > div:nth-child(2) {
-      position: absolute; left: 50%; transform: translateX(-50%);
-      pointer-events: none;
-    }
-    /* Right slot : status + logout */
-    .header > .ml-auto { margin-left: 0; }
-    #userLabel { display: none !important; }
-    #btnLogout { display: none !important; }
-    #statusDot { font-size: 10px; padding: 2px 8px; }
 
-    /* ─ Sidebar → Drawer ─ */
+    /* Logo centré absolument dans le header */
+    .header > div:nth-child(2),   /* logo-mark */
+    .header > div:nth-child(3) {  /* logo text+sub */
+      position: static;
+    }
+    /* Wrap logo-mark + text en groupe centré */
+    .header > div:nth-child(2) { margin-left: auto; }
+    .header > div:nth-child(3) { margin-right: auto; }
+
+    .logo-sub { display: none; }
+    .logo-text { font-size: 18px; }
+    .logo-mark { width: 34px; height: 34px; font-size: 17px; border-radius: 10px; }
+
+    /* Droite header: uniquement le badge status */
+    #userLabel { display: none !important; }
+    #btnLogout  { display: none !important; }
+    #statusDot  { font-size: 10px; padding: 2px 7px; flex-shrink: 0; }
+    .header > .ml-auto { margin-left: 0; }
+
+    /* Layout */
+    .layout { padding-top: 56px; }
+    .main { margin-left: 0; padding: 18px 14px 90px; }
+
+    /* Sidebar → Drawer */
     .sidebar {
-      width: 280px;
-      top: 0; bottom: 0; left: 0;
+      width: 282px; top: 0; bottom: 0; left: 0;
       transform: translateX(-100%);
-      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
-      z-index: 150;
-      padding: 0;
+      transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+      z-index: 150; padding: 0;
       border-right: none;
-      box-shadow: 4px 0 32px rgba(31,140,136,0.15);
+      box-shadow: 6px 0 40px rgba(15,30,22,0.18);
+      overflow-y: auto;
+      gap: 2px;
     }
     .sidebar.drawer-open { transform: translateX(0); }
+    /* Nav items dans le drawer */
+    .sidebar .nav-section { padding: 14px 18px 6px; }
+    .sidebar .nav-item { padding: 12px 18px; font-size: 14px; margin: 0 6px; border-radius: 10px; }
+    .sidebar .nav-item .icon { font-size: 18px; }
+    .sidebar .divider { margin: 8px 16px; }
 
-    /* Drawer header */
-    .sidebar::before {
-      content: '';
-      display: block;
-      height: 72px;
-      background: var(--grad);
-      flex-shrink: 0;
-    }
-    /* Restyle: add padding inside */
-    .sidebar .nav-section { padding: 16px 16px 6px; }
-    .sidebar .nav-item { padding: 11px 16px; font-size: 14px; border-radius: 10px; margin: 0 4px; }
-    .sidebar .divider { margin: 10px 16px; }
-    .sidebar > div[style*="space-between"] { padding: 0 16px 6px; }
-    .sidebar > div[style*="flex:1"] { flex: 1; }
-    /* Logout inside drawer */
-    .sidebar::after {
-      content: '';
-      display: block;
-      height: 20px;
-    }
-
-    /* ─ Layout ─ */
-    .layout { padding-top: 58px; }
-    .main { margin-left: 0; padding: 20px 14px 100px; }
-
-    /* ─ Page header : titre + count seulement, btn caché (→ FAB) ─ */
-    .page-header { margin-bottom: 18px; }
-    .page-title { font-size: 24px; }
-    /* Cacher les boutons "Nouvelle…" dans le page-header sur mobile → FAB */
-    .page-header > .btn { display: none; }
-
-    /* ─ FAB visible ─ */
+    /* FAB */
     #fab { display: flex; }
 
-    /* ─ Cards ─ */
+    /* Page header : cacher le bouton → FAB */
+    .page-header { margin-bottom: 16px; align-items: flex-start; }
+    .page-title { font-size: 22px; }
+    .page-header > .btn { display: none; }
+
+    /* Cards */
     .card { border-radius: 14px; }
-    .card-header {
-      padding: 14px 16px 12px;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
+    .card-header { padding: 13px 16px 11px; flex-direction: column; align-items: stretch; gap: 10px; }
+    .card-header > .card-title { margin-bottom: 0; }
+    .card-header .flex { width: 100%; gap: 8px; }
+    .card-header .flex .form-select { flex: 1; }
+    .card-header .flex .search-wrap { flex: 1; }
+    .card-header .flex .search-wrap input { width: 100%; }
+    /* card-header avec un seul enfant search-wrap (fournisseurs, ingrédients) */
+    .card-header > .search-wrap { width: 100%; }
+    .card-header > .search-wrap input { width: 100%; }
     .card-body { padding: 14px 16px; }
 
-    /* Search full width dans card-header */
-    .card-header .flex { flex-wrap: wrap; width: 100%; gap: 8px; }
-    .card-header .flex .form-select { flex: 1; min-width: 120px; }
-    .card-header .flex .search-wrap { flex: 1; min-width: 140px; }
-    .card-header .flex .search-wrap input { width: 100%; }
-
-    /* ─ Grid ─ */
+    /* Grid */
     .grid-2 { grid-template-columns: 1fr; gap: 16px; }
 
-    /* ─ Tables ─ */
-    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { min-width: 560px; }
-    th { padding: 9px 10px; font-size: 10.5px; }
-    td { padding: 11px 10px; font-size: 12.5px; }
+    /* Tables : scroll horizontal DANS le conteneur uniquement */
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      /* Empêche le scroll de remonter à la page */
+      overscroll-behavior-x: contain;
+    }
+    /* Pas de min-width fixe — laisse les colonnes se compresser naturellement */
+    table { min-width: 0; width: max-content; min-width: 100%; }
+    th { padding: 9px 10px; font-size: 10px; white-space: nowrap; }
+    td { padding: 10px 10px; font-size: 12px; white-space: nowrap; }
+    .td-name { white-space: normal; min-width: 100px; }
 
-    /* ─ Ingredient editor rows ─ */
-    .ing-row { grid-template-columns: 1fr 80px auto; gap: 7px; }
+    /* Ingredient editor rows */
+    .ing-row { grid-template-columns: 1fr 76px auto; gap: 7px; }
 
-    /* ─ Nutri cards ─ */
-    .nutri-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
-    .nutri-card { padding: 12px 8px; }
-    .nutri-card .val { font-size: 18px; }
-    .nutri-card .lbl { font-size: 10.5px; }
+    /* Nutri cards */
+    .nutri-cards { grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
+    .nutri-card { padding: 10px 6px; }
+    .nutri-card .val { font-size: 17px; }
+    .nutri-card .lbl { font-size: 10px; }
 
-    /* ─ Prix bandeau ─ */
-    #prixBandeau { flex-wrap: wrap; gap: 10px 20px; padding: 10px 14px; }
+    /* Prix bandeau */
+    #prixBandeau { flex-wrap: wrap; gap: 8px 18px; padding: 10px 14px; }
 
-    /* ─ Forms ─ */
-    .form-row { grid-template-columns: 1fr; gap: 0; }
+    /* Forms */
+    .form-row { grid-template-columns: 1fr; }
     .form-group[style*="width:180px"] { width: 100% !important; }
 
-    /* ─ Modals : slide from bottom ─ */
-    .modal-overlay { align-items: flex-end; }
+    /* Modals : bottom sheet */
+    .modal-overlay { align-items: flex-end; padding: 0; }
     .modal {
-      padding: 24px 20px 32px;
-      border-radius: 24px 24px 0 0;
-      max-width: 100%;
-      width: 100%;
-      max-height: 92vh;
-      overflow-y: auto;
-      transform: translateY(40px);
+      padding: 20px 18px 32px;
+      border-radius: 20px 20px 0 0;
+      max-width: 100%; width: 100%;
+      max-height: 92vh; overflow-y: auto;
+      transform: translateY(60px) scale(0.98);
     }
-    .modal-overlay.open .modal { transform: translateY(0); }
-    .modal-title { font-size: 20px; margin-bottom: 18px; }
-    .modal-actions { flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-    .modal-actions .btn { flex: 1; justify-content: center; min-width: 110px; }
-    /* Handle bar on modals */
+    .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+    .modal-title { font-size: 19px; margin-bottom: 16px; }
+    .modal-actions { flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .modal-actions .btn { flex: 1; justify-content: center; min-width: 100px; }
+    /* Handle bar */
     .modal::before {
-      content: '';
-      display: block;
-      width: 40px; height: 4px;
-      background: var(--border);
-      border-radius: 2px;
-      margin: -10px auto 18px;
+      content: ''; display: block;
+      width: 36px; height: 4px; background: var(--border);
+      border-radius: 2px; margin: -6px auto 16px;
     }
 
-    /* ─ Allergènes ─ */
+    /* Allergènes */
     #allergenesCheckboxes { grid-template-columns: 1fr 1fr; gap: 6px; }
 
-    /* ─ Étiquetage ─ */
-    .etiq-preview { padding: 12px; }
-    .etiq-preview-text { font-size: 12px; line-height: 1.8; }
+    /* Étiquetage */
+    .etiq-preview { padding: 11px; }
+    .etiq-preview-text { font-size: 11.5px; line-height: 1.7; }
 
-    /* ─ Empty states ─ */
-    .empty { padding: 36px 16px; }
+    /* Empty */
+    .empty { padding: 32px 16px; }
     #recetteEmpty { display: none !important; }
 
-    /* ─ Type toggle ─ */
+    /* Type chips */
     .type-chip { flex: 1; text-align: center; }
 
-    /* ─ Compose rows ─ */
-    #composeIngredients .ing-row { grid-template-columns: 1fr 78px auto; }
+    /* Compose rows */
+    #composeIngredients .ing-row { grid-template-columns: 1fr 76px auto; }
 
-    /* ─ Toast ─ */
-    .toast { bottom: 24px; right: 14px; left: 14px; justify-content: center; font-size: 13px; }
+    /* Toast */
+    .toast { bottom: 20px; right: 14px; left: 14px; justify-content: center; }
 
-    /* ─ PWA banner ─ */
-    #pwaBanner { padding: 12px 16px; gap: 12px; }
-    #iosGuide { padding: 20px 18px; }
+    /* PWA */
+    #pwaBanner { padding: 12px 16px; }
+    #iosGuide { padding: 18px; }
 
-    /* ─ Login ─ */
-    #loginPage > div { padding: 32px 22px; }
+    /* Login */
+    #loginPage > div { padding: 28px 20px; border-radius: 20px; }
 
-    /* ─ Editor buttons ─ */
-    #recetteEditor .flex.gap-2.mt-3 { gap: 10px; }
+    /* Editor save/cancel */
     #recetteEditor .flex.gap-2.mt-3 .btn { flex: 1; justify-content: center; }
   }
 
-  /* ── SMALL MOBILE (≤ 480px) ── */
-  @media (max-width: 480px) {
-    .main { padding: 16px 12px 96px; }
-    .page-title { font-size: 22px; }
-    .nutri-cards { grid-template-columns: repeat(2, 1fr); gap: 7px; }
-    .nutri-card .val { font-size: 16px; }
-    .card-header { padding: 12px 14px 10px; }
-    .card-body { padding: 12px 14px; }
-    th { font-size: 10px; padding: 8px 8px; }
-    td { font-size: 12px; padding: 10px 8px; }
-    .modal { padding: 20px 16px 28px; }
+  /* ── PETIT MOBILE ≤ 420px ── */
+  @media (max-width: 420px) {
+    .nutri-cards { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+    .nutri-card .val { font-size: 15px; }
+    .modal { padding: 18px 14px 28px; }
     #allergenesCheckboxes { grid-template-columns: 1fr 1fr; }
-    .ing-row { grid-template-columns: 1fr 70px auto; gap: 6px; }
-    .logo-mark { width: 34px; height: 34px; font-size: 17px; }
-    .header { height: 54px; }
-    .layout { padding-top: 54px; }
-    #fab { width: 52px; height: 52px; font-size: 24px; bottom: 22px; right: 16px; }
+    .ing-row { grid-template-columns: 1fr 68px auto; }
+    #fab { width: 52px; height: 52px; font-size: 25px; }
   }
 
-  /* ── Drawer logout item (ajouté via JS) ── */
-  .drawer-logout-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 11px 20px; margin: 4px 8px;
-    border-radius: 10px; cursor: pointer;
-    font-size: 13px; font-weight: 500;
-    color: var(--danger);
-    transition: background 0.15s;
-    border: none; background: none; width: calc(100% - 16px);
-    font-family: 'Sora', sans-serif;
-  }
-  .drawer-logout-item:hover { background: rgba(224,92,92,0.07); }
 </style>
 </head>
 <body>
@@ -1748,95 +1716,123 @@ if ('serviceWorker' in navigator) {
 })();
 </script>
 
-<!-- RESPONSIVE JS : Drawer + FAB -->
+<!-- RESPONSIVE JS v3 : Drawer + FAB -->
 <script>
 (function() {
-  /* ── DRAWER ── */
+  const isMobile = () => window.innerWidth <= 768;
+
+  /* ════════════════════════════════
+     DRAWER
+  ════════════════════════════════ */
   const overlay = document.getElementById('drawerOverlay');
   const sidebar = document.querySelector('.sidebar');
+
+  // Injecter le header du drawer
+  const drawerBanner = document.createElement('div');
+  drawerBanner.style.cssText = 'background:var(--grad);padding:30px 20px 22px;display:flex;align-items:center;gap:14px;position:relative;flex-shrink:0;';
+
+  const dLogo = document.createElement('div');
+  dLogo.style.cssText = 'width:46px;height:46px;background:rgba(255,255,255,0.22);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:23px;flex-shrink:0;';
+  dLogo.textContent = '🍃';
+
+  const dText = document.createElement('div');
+  const dName = document.createElement('div');
+  dName.style.cssText = "font-family:'DM Serif Display',serif;font-size:20px;color:white;letter-spacing:-0.2px;line-height:1.1;";
+  dName.textContent = 'EasyNutri';
+  const dSub = document.createElement('div');
+  dSub.style.cssText = 'font-size:9.5px;color:rgba(255,255,255,0.65);letter-spacing:1.8px;text-transform:uppercase;margin-top:2px;';
+  dSub.textContent = 'by JaySolution';
+  dText.appendChild(dName); dText.appendChild(dSub);
+
+  const dClose = document.createElement('button');
+  dClose.style.cssText = 'position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.18);border:none;border-radius:8px;width:32px;height:32px;font-size:16px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;';
+  dClose.innerHTML = '✕';
+  dClose.onclick = closeDrawer;
+
+  drawerBanner.appendChild(dLogo);
+  drawerBanner.appendChild(dText);
+  drawerBanner.appendChild(dClose);
+  sidebar.insertBefore(drawerBanner, sidebar.firstChild);
+
+  // Injecter bouton déconnexion en bas du drawer
+  const spacerEl = sidebar.querySelector('div[style*="flex:1"]');
+  const logoutBtn = document.createElement('button');
+  logoutBtn.className = 'drawer-logout-item';
+  logoutBtn.innerHTML = '🚪 &nbsp;Déconnexion';
+  logoutBtn.onclick = () => { closeDrawer(); logout(); };
+  if (spacerEl) sidebar.insertBefore(logoutBtn, spacerEl);
+  else sidebar.appendChild(logoutBtn);
 
   function openDrawer() {
     sidebar.classList.add('drawer-open');
     overlay.style.display = 'block';
-    requestAnimationFrame(() => overlay.classList.add('open'));
+    // Double RAF pour garantir la transition
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
     document.body.style.overflow = 'hidden';
-    if (!document.getElementById('drawerLogoutBtn')) {
-      const spacerEl = sidebar.querySelector('div[style*="flex:1"]');
-      const btn = document.createElement('button');
-      btn.id = 'drawerLogoutBtn';
-      btn.className = 'drawer-logout-item';
-      btn.innerHTML = '🚪 &nbsp;Déconnexion';
-      btn.onclick = () => { closeDrawer(); logout(); };
-      if (spacerEl) sidebar.insertBefore(btn, spacerEl);
-      else sidebar.appendChild(btn);
-    }
   }
 
   function closeDrawer() {
     sidebar.classList.remove('drawer-open');
     overlay.classList.remove('open');
     document.body.style.overflow = '';
-    setTimeout(() => { if(overlay) overlay.style.display = 'none'; }, 280);
+    setTimeout(() => { if (overlay && !overlay.classList.contains('open')) overlay.style.display = 'none'; }, 280);
   }
 
-  window.toggleDrawer = function() {
-    sidebar.classList.contains('drawer-open') ? closeDrawer() : openDrawer();
-  };
-  window.closeDrawer = closeDrawer;
+  window.toggleDrawer = () => sidebar.classList.contains('drawer-open') ? closeDrawer() : openDrawer();
+  window.closeDrawer  = closeDrawer;
 
+  // Fermer drawer + naviguer quand on clique un nav item
   sidebar.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-      if (window.innerWidth <= 768) closeDrawer();
-    });
+    item.addEventListener('click', () => { if (isMobile()) closeDrawer(); });
   });
 
-  // Drawer header banner
-  const drawerHeader = document.createElement('div');
-  drawerHeader.style.cssText = 'background:var(--grad);padding:28px 20px 20px;display:flex;align-items:center;gap:12px;margin-bottom:8px;position:relative;flex-shrink:0;';
-  // Build drawer header safely
-  const dh = drawerHeader;
-  const logoWrap = document.createElement('div');
-  logoWrap.style.cssText = 'width:44px;height:44px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0';
-  logoWrap.textContent = '🍃';
-  const textWrap = document.createElement('div');
-  const appName = document.createElement('div');
-  appName.style.cssText = "font-family:'DM Serif Display',serif;font-size:20px;color:white;letter-spacing:-0.3px";
-  appName.textContent = 'EasyNutri';
-  const appSub = document.createElement('div');
-  appSub.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:1.5px;text-transform:uppercase';
-  appSub.textContent = 'by JaySolution';
-  textWrap.appendChild(appName); textWrap.appendChild(appSub);
-  const closeBtn = document.createElement('button');
-  closeBtn.style.cssText = 'position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;width:30px;height:30px;font-size:14px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center';
-  closeBtn.textContent = '✕'; closeBtn.onclick = closeDrawer;
-  dh.appendChild(logoWrap); dh.appendChild(textWrap); dh.appendChild(closeBtn);
-  sidebar.insertBefore(drawerHeader, sidebar.firstChild);
+  // Empêcher ::before de créer un espace vide (déjà géré par le banner injecté)
+  const fix = document.createElement('style');
+  fix.textContent = '@media(max-width:768px){.sidebar::before,.sidebar::after{display:none!important;}.sidebar{padding-top:0!important;}}';
+  document.head.appendChild(fix);
 
-  const styleOverride = document.createElement('style');
-  styleOverride.textContent = '@media(max-width:768px){.sidebar::before{display:none !important;}.sidebar{padding-top:0;}}';
-  document.head.appendChild(styleOverride);
 
-  /* ── FAB ── */
-  const fabMap = {
-    'pageRecettes':     () => { if(typeof openModalRecette==='function') openModalRecette(); },
-    'pageIngredients':  () => { if(typeof openModalIngredient==='function') openModalIngredient(); },
-    'pageFournisseurs': () => { if(typeof openModalFournisseur==='function') openModalFournisseur(); },
+  /* ════════════════════════════════
+     FAB — action selon la page active
+  ════════════════════════════════ */
+  const fabActions = {
+    pageRecettes:     () => typeof openModalRecette    === 'function' && openModalRecette(),
+    pageIngredients:  () => typeof openModalIngredient === 'function' && openModalIngredient(),
+    pageFournisseurs: () => typeof openModalFournisseur=== 'function' && openModalFournisseur(),
   };
 
   window.fabAction = function() {
-    const pages = ['pageRecettes','pageIngredients','pageFournisseurs'];
-    for (const p of pages) {
-      const el = document.getElementById(p);
-      if (el && el.style.display !== 'none') { fabMap[p]?.(); return; }
+    for (const [id, fn] of Object.entries(fabActions)) {
+      const el = document.getElementById(id);
+      if (el && el.style.display !== 'none') { fn(); return; }
     }
   };
 
-  const _origShowPage = window.showPage;
-  if (_origShowPage) {
-    window.showPage = function(p) {
-      _origShowPage(p);
-    };
-  }
+
+  /* ════════════════════════════════
+     TABLE SCROLL : contenir dans .table-wrap
+     sans laisser remonter à la page
+  ════════════════════════════════ */
+  document.querySelectorAll('.table-wrap').forEach(wrap => {
+    wrap.addEventListener('touchstart', e => {
+      wrap._startX = e.touches[0].clientX;
+      wrap._startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    wrap.addEventListener('touchmove', e => {
+      if (!wrap._startX) return;
+      const dx = Math.abs(e.touches[0].clientX - wrap._startX);
+      const dy = Math.abs(e.touches[0].clientY - wrap._startY);
+      // Si le mouvement est principalement horizontal : absorber l'event
+      if (dx > dy) {
+        const atLeft  = wrap.scrollLeft === 0;
+        const atRight = wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 1;
+        if ((atLeft && dx > 0 && e.touches[0].clientX > wrap._startX) ||
+            (atRight && dx > 0 && e.touches[0].clientX < wrap._startX)) return;
+        e.stopPropagation();
+      }
+    }, { passive: true });
+  });
 
 })();
 </script>
