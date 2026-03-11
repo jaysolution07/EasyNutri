@@ -351,8 +351,14 @@
     .form-row { grid-template-columns: 1fr; }
     .form-group[style*="width:180px"] { width: 100% !important; }
 
-    /* Modals : bottom sheet */
-    .modal-overlay { align-items: flex-end; padding: 0; }
+    /* Modals : bottom sheet — position fixed sur viewport */
+    .modal-overlay {
+      align-items: flex-end;
+      padding: 0;
+      position: fixed !important;
+      top: 0 !important; left: 0 !important;
+      right: 0 !important; bottom: 0 !important;
+    }
     .modal {
       padding: 20px 18px 32px;
       border-radius: 20px 20px 0 0;
@@ -1606,8 +1612,17 @@ async function deleteIngredient() {
 }
 
 // ── MODAL HELPERS ──
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  // Rétablir le scroll seulement si aucun autre modal n'est ouvert
+  if (!document.querySelector('.modal-overlay.open')) {
+    document.body.style.overflow = '';
+  }
+}
 document.querySelectorAll('.modal-overlay').forEach(el => { el.addEventListener('click', e => { if (e.target===el) el.classList.remove('open'); }); });
 
 // ── TOAST ──
@@ -1819,9 +1834,20 @@ if ('serviceWorker' in navigator) {
   window.toggleDrawer = () => sidebar.classList.contains('drawer-open') ? closeDrawer() : openDrawer();
   window.closeDrawer  = closeDrawer;
 
-  // Fermer drawer + naviguer quand on clique un nav item
-  sidebar.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => { if (isMobile()) closeDrawer(); });
+  // Intercepter showPage pour fermer le drawer AVANT la navigation
+  // (plus fiable que les listeners sur .nav-item qui peuvent être ajoutés dynamiquement)
+  const _origShowPage = window.showPage;
+  window.showPage = function(p) {
+    if (isMobile() && sidebar.classList.contains('drawer-open')) {
+      closeDrawer();
+    }
+    _origShowPage(p);
+  };
+
+  // Fallback : aussi sur les nav-items existants (catégories dynamiques, etc.)
+  sidebar.addEventListener('click', e => {
+    const item = e.target.closest('.nav-item');
+    if (item && isMobile()) closeDrawer();
   });
 
   // Empêcher ::before de créer un espace vide (déjà géré par le banner injecté)
