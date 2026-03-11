@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="manifest" id="pwa-manifest">
+<link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -1441,19 +1441,6 @@ function logout() {
   const LOGO = 'https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png';
   const DISMISSED_KEY = 'easynutri_pwa_dismissed';
 
-  // Manifest inline via Blob
-  const manifest = {
-    name: 'EasyNutri', short_name: 'EasyNutri',
-    start_url: location.href, display: 'standalone',
-    background_color: '#ffffff', theme_color: '#1f8c88',
-    icons: [
-      { src: LOGO, sizes: '192x192', type: 'image/png' },
-      { src: LOGO, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-    ]
-  };
-  const mBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-  document.getElementById('pwa-manifest').href = URL.createObjectURL(mBlob);
-
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
@@ -1502,6 +1489,7 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
+
 
 
 
