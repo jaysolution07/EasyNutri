@@ -163,6 +163,16 @@
 #iosGuide .ios-step .num { width:26px; height:26px; border-radius:50%; background:var(--grad); color:white; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 #iosGuide .ios-close { margin-top:6px; width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; }
 
+  /* ── Cat edit rows (modal catégories) ── */
+  .cat-edit-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .cat-edit-row:last-child { border-bottom: none; }
+  .cat-edit-input { flex: 1; min-width: 120px; padding: 7px 10px !important; font-size: 13px !important; }
+  .cat-edit-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
   /* ══════════════════════════════════════════════════════════════
      RESPONSIVE v3 — TABLET & MOBILE
      Burger drawer + FAB + table fix + header fix
@@ -275,13 +285,26 @@
     .sidebar .nav-item .icon { font-size: 18px; }
     .sidebar .divider { margin: 8px 16px; }
 
-    /* FAB */
-    #fab { display: flex; }
+    /* FAB — masqué car bouton inline à côté du titre */
+    #fab { display: none !important; }
 
-    /* Page header : cacher le bouton → FAB */
-    .page-header { margin-bottom: 16px; align-items: flex-start; }
-    .page-title { font-size: 22px; }
-    .page-header > .btn { display: none; }
+    /* Page header : titre + bouton côte à côte, compact */
+    .page-header {
+      margin-bottom: 16px;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: nowrap;
+    }
+    .page-header > div { flex: 1; min-width: 0; }
+    .page-title { font-size: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .page-header > .btn {
+      display: inline-flex !important;
+      flex-shrink: 0;
+      padding: 8px 14px;
+      font-size: 12px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
 
     /* Cards */
     .card { border-radius: 14px; }
@@ -361,6 +384,19 @@
 
     /* Type chips */
     .type-chip { flex: 1; text-align: center; }
+
+    /* ─ Modal Catégories responsive ─ */
+    #categoriesManagerList { max-height: 50vh !important; overflow-y: auto; }
+    .cat-edit-row { padding: 10px 0; }
+    .cat-edit-input { flex: 1 1 100% !important; }
+    .cat-edit-actions { width: 100%; }
+    .cat-edit-actions .btn { flex: 1; justify-content: center; }
+    /* Ligne ajout nouvelle catégorie */
+    #modalCategories .modal > div[style*="display:flex"] {
+      flex-wrap: wrap; gap: 8px;
+    }
+    #modalCategories .modal > div[style*="display:flex"] input { flex: 1 1 100%; }
+    #modalCategories .modal > div[style*="display:flex"] .btn { width: 100%; justify-content: center; }
 
     /* Compose rows */
     #composeIngredients .ing-row { grid-template-columns: 1fr 76px auto; }
@@ -904,10 +940,12 @@ function renderCategoriesManager() {
   const el = document.getElementById('categoriesManagerList');
   if (!CATEGORIES.length) { el.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-icon">🗂️</div><p>Aucune catégorie</p></div>'; return; }
   el.innerHTML = CATEGORIES.map((c, i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <input class="form-input" id="catEdit_${i}" value="${escHtml(c)}" style="flex:1;padding:7px 10px;font-size:13px">
-      <button class="btn btn-secondary btn-sm" onclick="saveCategorieEdit(${i})">✓</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteCategorie(${i})">🗑️</button>
+    <div class="cat-edit-row">
+      <input class="form-input cat-edit-input" id="catEdit_${i}" value="${escHtml(c)}">
+      <div class="cat-edit-actions">
+        <button class="btn btn-secondary btn-sm" onclick="saveCategorieEdit(${i})">✓ Enregistrer</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCategorie(${i})">🗑️</button>
+      </div>
     </div>`).join('');
 }
 
