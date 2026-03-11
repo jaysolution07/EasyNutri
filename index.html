@@ -163,167 +163,274 @@
 #iosGuide .ios-step .num { width:26px; height:26px; border-radius:50%; background:var(--grad); color:white; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 #iosGuide .ios-close { margin-top:6px; width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; }
 
-  /* ═══════════════════════════════════════════════
-     RESPONSIVE — TABLET & MOBILE
-     Injected styles — aucun HTML modifié
-  ═══════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════
+     RESPONSIVE PREMIUM — TABLET & MOBILE
+     Menu burger + drawer + FAB — zéro HTML modifié
+  ═══════════════════════════════════════════════════════════ */
+
+  /* ── BURGER BUTTON (caché sur desktop) ── */
+  #burgerBtn {
+    display: none;
+    align-items: center; justify-content: center;
+    width: 38px; height: 38px;
+    border: none; background: none;
+    cursor: pointer; border-radius: 10px;
+    color: var(--text2);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  #burgerBtn:hover { background: var(--surface2); }
+  #burgerBtn svg { display: block; }
+
+  /* ── DRAWER OVERLAY ── */
+  #drawerOverlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 149;
+    background: rgba(20,40,30,0.45);
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    transition: opacity 0.28s ease;
+  }
+  #drawerOverlay.open { opacity: 1; }
+
+  /* ── FAB ── */
+  #fab {
+    display: none;
+    position: fixed;
+    bottom: 28px; right: 20px;
+    z-index: 120;
+    width: 56px; height: 56px;
+    border-radius: 18px;
+    border: none;
+    background: var(--grad);
+    color: white;
+    font-size: 26px;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(31,140,136,0.38);
+    transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s;
+    align-items: center; justify-content: center;
+  }
+  #fab:active { transform: scale(0.93); box-shadow: 0 4px 12px rgba(31,140,136,0.3); }
 
   /* ── TABLET (≤ 1024px) ── */
   @media (max-width: 1024px) {
-    .sidebar { width: 180px; padding: 20px 8px; }
-    .main { margin-left: 180px; padding: 24px 20px; }
-    .grid-2 { grid-template-columns: 1fr; }
+    .sidebar { width: 200px; padding: 20px 10px; }
+    .main { margin-left: 200px; padding: 28px 24px; }
+    .grid-2 { grid-template-columns: 1fr; gap: 20px; }
     .nutri-cards { grid-template-columns: repeat(3, 1fr); }
+    .card-header .flex { flex-wrap: wrap; gap: 6px; }
   }
 
   /* ── MOBILE (≤ 768px) ── */
   @media (max-width: 768px) {
-    /* Header */
-    .header { padding: 0 16px; gap: 10px; height: 60px; }
-    .logo-text { font-size: 18px; }
+
+    /* ─ Header ─ */
+    .header {
+      padding: 0 14px;
+      height: 58px;
+      justify-content: space-between;
+    }
+    #burgerBtn { display: flex; }
     .logo-sub { display: none; }
+    .logo-text { font-size: 19px; }
+    /* Centre le logo */
+    .header > div:nth-child(2) {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      pointer-events: none;
+    }
+    /* Right slot : status + logout */
+    .header > .ml-auto { margin-left: 0; }
     #userLabel { display: none !important; }
-    #btnLogout { padding: 5px 10px; font-size: 10px; }
-    #statusDot { font-size: 10px; padding: 2px 7px; }
+    #btnLogout { display: none !important; }
+    #statusDot { font-size: 10px; padding: 2px 8px; }
 
-    /* Sidebar → bottom nav bar */
+    /* ─ Sidebar → Drawer ─ */
     .sidebar {
-      width: 100%;
-      top: auto;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 60px;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-around;
-      padding: 0 8px;
+      width: 280px;
+      top: 0; bottom: 0; left: 0;
+      transform: translateX(-100%);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+      z-index: 150;
+      padding: 0;
       border-right: none;
-      border-top: 1px solid var(--border);
-      gap: 0;
-      overflow: visible;
-      z-index: 99;
+      box-shadow: 4px 0 32px rgba(31,140,136,0.15);
     }
-    /* Hide sidebar extras, keep only the 3 main nav items */
-    .nav-section { display: none; }
-    #categorieNav { display: none; }
-    #cat-filter-all { display: none; }
-    .sidebar .divider { display: none; }
-    /* Hide the "Catégories" label+button row inside sidebar */
-    .sidebar > div:not(.nav-item):not(#categorieNav) { display: none; }
+    .sidebar.drawer-open { transform: translateX(0); }
 
-    .nav-item {
-      flex-direction: column;
-      gap: 3px;
-      padding: 6px 10px;
-      font-size: 9px;
-      border-radius: 10px;
-      flex: 1;
-      justify-content: center;
-      text-align: center;
+    /* Drawer header */
+    .sidebar::before {
+      content: '';
+      display: block;
+      height: 72px;
+      background: var(--grad);
+      flex-shrink: 0;
     }
-    .nav-item .icon { font-size: 20px; }
+    /* Restyle: add padding inside */
+    .sidebar .nav-section { padding: 16px 16px 6px; }
+    .sidebar .nav-item { padding: 11px 16px; font-size: 14px; border-radius: 10px; margin: 0 4px; }
+    .sidebar .divider { margin: 10px 16px; }
+    .sidebar > div[style*="space-between"] { padding: 0 16px 6px; }
+    .sidebar > div[style*="flex:1"] { flex: 1; }
+    /* Logout inside drawer */
+    .sidebar::after {
+      content: '';
+      display: block;
+      height: 20px;
+    }
 
-    /* Main layout */
-    .layout { padding-top: 60px; }
-    .main { margin-left: 0; padding: 16px 12px 80px; }
+    /* ─ Layout ─ */
+    .layout { padding-top: 58px; }
+    .main { margin-left: 0; padding: 20px 14px 100px; }
 
-    /* Page header */
-    .page-header { flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-    .page-title { font-size: 22px; }
-    .page-header > .btn { width: 100%; justify-content: center; }
+    /* ─ Page header : titre + count seulement, btn caché (→ FAB) ─ */
+    .page-header { margin-bottom: 18px; }
+    .page-title { font-size: 24px; }
+    /* Cacher les boutons "Nouvelle…" dans le page-header sur mobile → FAB */
+    .page-header > .btn { display: none; }
 
-    /* Cards */
-    .card-header { flex-wrap: wrap; gap: 8px; padding: 14px 16px 12px; }
+    /* ─ FAB visible ─ */
+    #fab { display: flex; }
+
+    /* ─ Cards ─ */
+    .card { border-radius: 14px; }
+    .card-header {
+      padding: 14px 16px 12px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
     .card-body { padding: 14px 16px; }
-    .card-header .flex { flex-wrap: wrap; width: 100%; gap: 6px; }
-    .card-header .flex .form-select,
-    .card-header .flex .search-wrap { width: 100% !important; }
-    .card-header .search-wrap input { width: 100%; }
 
-    /* Grid */
+    /* Search full width dans card-header */
+    .card-header .flex { flex-wrap: wrap; width: 100%; gap: 8px; }
+    .card-header .flex .form-select { flex: 1; min-width: 120px; }
+    .card-header .flex .search-wrap { flex: 1; min-width: 140px; }
+    .card-header .flex .search-wrap input { width: 100%; }
+
+    /* ─ Grid ─ */
     .grid-2 { grid-template-columns: 1fr; gap: 16px; }
 
-    /* Tables scroll horizontally */
+    /* ─ Tables ─ */
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { min-width: 520px; }
-    th, td { padding: 10px 10px; font-size: 12.5px; }
+    table { min-width: 560px; }
+    th { padding: 9px 10px; font-size: 10.5px; }
+    td { padding: 11px 10px; font-size: 12.5px; }
 
-    /* Ingredient rows in editor */
-    .ing-row { grid-template-columns: 1fr 80px auto auto; gap: 6px; }
+    /* ─ Ingredient editor rows ─ */
+    .ing-row { grid-template-columns: 1fr 80px auto; gap: 7px; }
 
-    /* Nutri cards 2 columns */
-    .nutri-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    /* ─ Nutri cards ─ */
+    .nutri-cards { grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .nutri-card { padding: 12px 8px; }
     .nutri-card .val { font-size: 18px; }
+    .nutri-card .lbl { font-size: 10.5px; }
 
-    /* Prix bandeau wraps */
-    #prixBandeau { flex-wrap: wrap; gap: 12px; padding: 10px 12px; }
+    /* ─ Prix bandeau ─ */
+    #prixBandeau { flex-wrap: wrap; gap: 10px 20px; padding: 10px 14px; }
 
-    /* Form rows single column */
-    .form-row { grid-template-columns: 1fr; }
+    /* ─ Forms ─ */
+    .form-row { grid-template-columns: 1fr; gap: 0; }
+    .form-group[style*="width:180px"] { width: 100% !important; }
 
-    /* Modals */
-    .modal { padding: 20px 18px; border-radius: 16px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
-    .modal-title { font-size: 18px; margin-bottom: 16px; }
-    .modal-actions { flex-wrap: wrap; gap: 8px; }
-    .modal-actions .btn { flex: 1; justify-content: center; min-width: 100px; }
+    /* ─ Modals : slide from bottom ─ */
+    .modal-overlay { align-items: flex-end; }
+    .modal {
+      padding: 24px 20px 32px;
+      border-radius: 24px 24px 0 0;
+      max-width: 100%;
+      width: 100%;
+      max-height: 92vh;
+      overflow-y: auto;
+      transform: translateY(40px);
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-title { font-size: 20px; margin-bottom: 18px; }
+    .modal-actions { flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .modal-actions .btn { flex: 1; justify-content: center; min-width: 110px; }
+    /* Handle bar on modals */
+    .modal::before {
+      content: '';
+      display: block;
+      width: 40px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: -10px auto 18px;
+    }
 
-    /* Allergenes 2 col on mobile */
-    #allergenesCheckboxes { grid-template-columns: 1fr 1fr; gap: 5px 10px; }
+    /* ─ Allergènes ─ */
+    #allergenesCheckboxes { grid-template-columns: 1fr 1fr; gap: 6px; }
 
-    /* Etiquetage */
+    /* ─ Étiquetage ─ */
     .etiq-preview { padding: 12px; }
-    .etiq-preview-text { font-size: 12px; }
+    .etiq-preview-text { font-size: 12px; line-height: 1.8; }
 
-    /* Empty states */
-    .empty { padding: 32px 16px; }
+    /* ─ Empty states ─ */
+    .empty { padding: 36px 16px; }
+    #recetteEmpty { display: none !important; }
 
-    /* Type toggle */
-    .type-toggle { flex-wrap: wrap; }
+    /* ─ Type toggle ─ */
     .type-chip { flex: 1; text-align: center; }
 
-    /* Compose ingredient rows */
-    #composeIngredients .ing-row { grid-template-columns: 1fr 80px auto; }
+    /* ─ Compose rows ─ */
+    #composeIngredients .ing-row { grid-template-columns: 1fr 78px auto; }
 
-    /* PWA banner: stay above bottom nav */
-    #pwaBanner { bottom: 60px; }
-    #iosGuide { bottom: 60px; }
+    /* ─ Toast ─ */
+    .toast { bottom: 24px; right: 14px; left: 14px; justify-content: center; font-size: 13px; }
 
-    /* Toast: lift above bottom nav */
-    .toast { bottom: 80px; right: 16px; left: 16px; justify-content: center; }
+    /* ─ PWA banner ─ */
+    #pwaBanner { padding: 12px 16px; gap: 12px; }
+    #iosGuide { padding: 20px 18px; }
 
-    /* Login */
-    #loginPage > div { padding: 28px 20px; }
+    /* ─ Login ─ */
+    #loginPage > div { padding: 32px 22px; }
 
-    /* Editor save/cancel buttons */
-    #recetteEditor .flex.gap-2.mt-3 { flex-wrap: wrap; }
+    /* ─ Editor buttons ─ */
+    #recetteEditor .flex.gap-2.mt-3 { gap: 10px; }
     #recetteEditor .flex.gap-2.mt-3 .btn { flex: 1; justify-content: center; }
   }
 
   /* ── SMALL MOBILE (≤ 480px) ── */
   @media (max-width: 480px) {
-    .main { padding: 12px 10px 80px; }
-    .page-title { font-size: 20px; }
-    .nutri-cards { grid-template-columns: repeat(2, 1fr); gap: 6px; }
-    .nutri-card { padding: 10px 8px; }
+    .main { padding: 16px 12px 96px; }
+    .page-title { font-size: 22px; }
+    .nutri-cards { grid-template-columns: repeat(2, 1fr); gap: 7px; }
     .nutri-card .val { font-size: 16px; }
-    .card-header { padding: 12px 12px 10px; }
-    .card-body { padding: 12px 12px; }
-    th, td { padding: 8px 8px; font-size: 12px; }
-    .modal { padding: 16px 14px; }
-    #allergenesCheckboxes { grid-template-columns: 1fr; }
-    .form-row { grid-template-columns: 1fr; }
-    .ing-row { grid-template-columns: 1fr 72px auto; }
-    .btn { font-size: 12px; padding: 8px 12px; }
+    .card-header { padding: 12px 14px 10px; }
+    .card-body { padding: 12px 14px; }
+    th { font-size: 10px; padding: 8px 8px; }
+    td { font-size: 12px; padding: 10px 8px; }
+    .modal { padding: 20px 16px 28px; }
+    #allergenesCheckboxes { grid-template-columns: 1fr 1fr; }
+    .ing-row { grid-template-columns: 1fr 70px auto; gap: 6px; }
     .logo-mark { width: 34px; height: 34px; font-size: 17px; }
-    .header { height: 56px; }
-    .layout { padding-top: 56px; }
+    .header { height: 54px; }
+    .layout { padding-top: 54px; }
+    #fab { width: 52px; height: 52px; font-size: 24px; bottom: 22px; right: 16px; }
   }
+
+  /* ── Drawer logout item (ajouté via JS) ── */
+  .drawer-logout-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 20px; margin: 4px 8px;
+    border-radius: 10px; cursor: pointer;
+    font-size: 13px; font-weight: 500;
+    color: var(--danger);
+    transition: background 0.15s;
+    border: none; background: none; width: calc(100% - 16px);
+    font-family: 'Sora', sans-serif;
+  }
+  .drawer-logout-item:hover { background: rgba(224,92,92,0.07); }
 </style>
 </head>
 <body>
 
 <header class="header">
+  <button id="burgerBtn" onclick="toggleDrawer()" aria-label="Menu">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="2" y1="5" x2="18" y2="5"/><line x1="2" y1="10" x2="18" y2="10"/><line x1="2" y1="15" x2="18" y2="15"/>
+    </svg>
+  </button>
   <div class="logo-mark">🍃</div>
   <div>
     <div class="logo-text">EasyNutri</div>
@@ -335,6 +442,12 @@
     <button id="btnLogout" class="btn btn-secondary btn-sm" onclick="logout()" style="display:none;font-size:11px">🚪 Déconnexion</button>
   </div>
 </header>
+
+<!-- DRAWER OVERLAY -->
+<div id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- FAB -->
+<button id="fab" onclick="fabAction()" aria-label="Ajouter">＋</button>
 
 <!-- PAGE LOGIN -->
 <div id="loginPage" style="position:fixed;inset:0;z-index:998;background:var(--bg);display:flex;align-items:center;justify-content:center">
@@ -1632,6 +1745,99 @@ if ('serviceWorker' in navigator) {
     document.getElementById('iosGuide').classList.remove('show');
     localStorage.setItem(DISMISSED_KEY, '1');
   };
+})();
+</script>
+
+<!-- RESPONSIVE JS : Drawer + FAB -->
+<script>
+(function() {
+  /* ── DRAWER ── */
+  const overlay = document.getElementById('drawerOverlay');
+  const sidebar = document.querySelector('.sidebar');
+
+  function openDrawer() {
+    sidebar.classList.add('drawer-open');
+    overlay.style.display = 'block';
+    requestAnimationFrame(() => overlay.classList.add('open'));
+    document.body.style.overflow = 'hidden';
+    if (!document.getElementById('drawerLogoutBtn')) {
+      const spacerEl = sidebar.querySelector('div[style*="flex:1"]');
+      const btn = document.createElement('button');
+      btn.id = 'drawerLogoutBtn';
+      btn.className = 'drawer-logout-item';
+      btn.innerHTML = '🚪 &nbsp;Déconnexion';
+      btn.onclick = () => { closeDrawer(); logout(); };
+      if (spacerEl) sidebar.insertBefore(btn, spacerEl);
+      else sidebar.appendChild(btn);
+    }
+  }
+
+  function closeDrawer() {
+    sidebar.classList.remove('drawer-open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(() => { if(overlay) overlay.style.display = 'none'; }, 280);
+  }
+
+  window.toggleDrawer = function() {
+    sidebar.classList.contains('drawer-open') ? closeDrawer() : openDrawer();
+  };
+  window.closeDrawer = closeDrawer;
+
+  sidebar.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeDrawer();
+    });
+  });
+
+  // Drawer header banner
+  const drawerHeader = document.createElement('div');
+  drawerHeader.style.cssText = 'background:var(--grad);padding:28px 20px 20px;display:flex;align-items:center;gap:12px;margin-bottom:8px;position:relative;flex-shrink:0;';
+  // Build drawer header safely
+  const dh = drawerHeader;
+  const logoWrap = document.createElement('div');
+  logoWrap.style.cssText = 'width:44px;height:44px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0';
+  logoWrap.textContent = '🍃';
+  const textWrap = document.createElement('div');
+  const appName = document.createElement('div');
+  appName.style.cssText = "font-family:'DM Serif Display',serif;font-size:20px;color:white;letter-spacing:-0.3px";
+  appName.textContent = 'EasyNutri';
+  const appSub = document.createElement('div');
+  appSub.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.7);letter-spacing:1.5px;text-transform:uppercase';
+  appSub.textContent = 'by JaySolution';
+  textWrap.appendChild(appName); textWrap.appendChild(appSub);
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);border:none;border-radius:8px;width:30px;height:30px;font-size:14px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center';
+  closeBtn.textContent = '✕'; closeBtn.onclick = closeDrawer;
+  dh.appendChild(logoWrap); dh.appendChild(textWrap); dh.appendChild(closeBtn);
+  sidebar.insertBefore(drawerHeader, sidebar.firstChild);
+
+  const styleOverride = document.createElement('style');
+  styleOverride.textContent = '@media(max-width:768px){.sidebar::before{display:none !important;}.sidebar{padding-top:0;}}';
+  document.head.appendChild(styleOverride);
+
+  /* ── FAB ── */
+  const fabMap = {
+    'pageRecettes':     () => { if(typeof openModalRecette==='function') openModalRecette(); },
+    'pageIngredients':  () => { if(typeof openModalIngredient==='function') openModalIngredient(); },
+    'pageFournisseurs': () => { if(typeof openModalFournisseur==='function') openModalFournisseur(); },
+  };
+
+  window.fabAction = function() {
+    const pages = ['pageRecettes','pageIngredients','pageFournisseurs'];
+    for (const p of pages) {
+      const el = document.getElementById(p);
+      if (el && el.style.display !== 'none') { fabMap[p]?.(); return; }
+    }
+  };
+
+  const _origShowPage = window.showPage;
+  if (_origShowPage) {
+    window.showPage = function(p) {
+      _origShowPage(p);
+    };
+  }
+
 })();
 </script>
 
