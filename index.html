@@ -1827,9 +1827,10 @@ async function doLogin() {
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('userLabel').textContent = email;
     document.getElementById('userLabel').style.display = 'inline';
-    const firstName = email.split('@')[0].split('.')[0];
+    const displayName = data.nom || email.split('@')[0].split('.')[0];
+    localStorage.setItem('easynutri_nom', displayName);
     const greet = document.getElementById('homeGreeting');
-    if (greet) greet.textContent = 'Bonjour ' + firstName.charAt(0).toUpperCase() + firstName.slice(1) + ' 👋';
+    if (greet) greet.textContent = 'Bonjour ' + displayName + ' 👋';
     document.getElementById('btnLogout').style.display = 'inline-flex';
     init();
   } catch(e) {
@@ -1857,6 +1858,9 @@ function logout() {
       document.getElementById('userLabel').textContent = savedUser;
       document.getElementById('userLabel').style.display = 'inline';
     }
+    const savedNom = localStorage.getItem('easynutri_nom');
+    const greet = document.getElementById('homeGreeting');
+    if (greet && savedNom) greet.textContent = 'Bonjour ' + savedNom + ' 👋';
     document.getElementById('btnLogout').style.display = 'inline-flex';
     init();
   }
@@ -2068,3 +2072,4 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
+
