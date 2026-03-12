@@ -720,7 +720,7 @@
               </div>
               <div id="prixBandeau" style="display:none;background:linear-gradient(135deg,rgba(103,181,75,0.08),rgba(31,140,136,0.08));border:1px solid var(--border);border-radius:10px;padding:10px 16px;margin-bottom:14px;align-items:center;gap:20px;flex-wrap:wrap">
                 <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Coût total</span><span id="prixTotal" style="font-family:'DM Serif Display',serif;font-size:22px;color:var(--g3)">0,00 €</span></div>
-                <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Pour 100g</span><span id="prixPour100g" style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--g2)">0,00 €</span></div>
+                <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Pour 1kg</span><span id="prixPour1kg" style="font-family:'DM Serif Display',serif;font-size:18px;color:var(--g2)">0,00 €</span></div>
                 <div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Poids</span><span id="poidsRecette" style="font-size:14px;font-weight:600;color:var(--text2)">0 g</span></div>
               </div>
               <div class="flex items-center gap-2" style="margin-bottom:10px">
@@ -1495,7 +1495,7 @@ function calcNutri() {
   if (poidsTotal > 0) {
     bandeau.style.display = 'flex';
     document.getElementById('prixTotal').textContent = prixTotal.toFixed(2) + ' €';
-    document.getElementById('prixPour100g').textContent = (prixTotal/poidsTotal*100).toFixed(2) + ' €';
+    document.getElementById('prixPour1kg').textContent = (prixTotal/poidsTotal*1000).toFixed(2) + ' €';
     document.getElementById('poidsRecette').textContent = poidsTotal + ' g';
   } else { bandeau.style.display = 'none'; }
   if (!poidsTotal) { document.getElementById('nutriSummary').style.display = 'none'; return; }
@@ -2072,4 +2072,5 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
+
 
