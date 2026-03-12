@@ -31,18 +31,32 @@
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
-  .header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 68px; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 32px; gap: 16px; }
+  .app-center { max-width: 1440px; margin: 0 auto; position: relative; }
+  .header { position: fixed; top: 0; left: 0; right: 0; z-index: 100; height: 68px; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 max(32px, calc((100vw - 1440px) / 2 + 32px)); gap: 16px; }
   .logo-mark { width: 40px; height: 40px; background: var(--grad); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
   .logo-text { font-family: 'DM Serif Display', serif; font-size: 22px; background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -0.3px; }
   .logo-sub { font-size: 10px; color: var(--text3); letter-spacing: 1.5px; text-transform: uppercase; margin-left: 2px; margin-top: -4px; }
-  .layout { display: flex; padding-top: 68px; min-height: 100vh; }
-  .sidebar { width: 220px; flex-shrink: 0; position: fixed; top: 68px; bottom: 0; left: 0; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 12px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+  .layout { display: flex; padding-top: 68px; min-height: 100vh; max-width: 1440px; margin: 0 auto; }
+  .sidebar {
+    width: 280px; flex-shrink: 0;
+    position: fixed; top: 0; bottom: 0; left: 0;
+    background: var(--surface);
+    border-right: none;
+    padding: 0;
+    display: flex; flex-direction: column; gap: 4px;
+    overflow-y: auto;
+    z-index: 150;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 6px 0 40px rgba(15,30,22,0.15);
+  }
+  .sidebar.drawer-open { transform: translateX(0); }
   .nav-section { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; color: var(--text3); text-transform: uppercase; padding: 12px 12px 6px; }
   .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 13.5px; font-weight: 500; color: var(--text2); transition: all 0.18s ease; user-select: none; }
   .nav-item:hover { background: var(--surface2); color: var(--g3); }
   .nav-item.active { background: linear-gradient(135deg, rgba(103,181,75,0.12), rgba(31,140,136,0.12)); color: var(--g3); font-weight: 600; }
   .nav-item .icon { font-size: 16px; }
-  .main { margin-left: 220px; flex: 1; padding: 32px 36px; }
+  .main { margin-left: 0; flex: 1; padding: 32px 36px; }
   .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
   .page-title { font-family: 'DM Serif Display', serif; font-size: 28px; color: var(--text); letter-spacing: -0.5px; }
   .page-title span { background: var(--grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -63,6 +77,32 @@
   .btn-sm { padding: 6px 12px; font-size: 12px; }
   .btn-icon { padding: 7px; border-radius: 8px; }
   .table-wrap { overflow-x: auto; }
+
+  /* ── Sticky first column (Nom) ── */
+  .table-sticky th:first-child,
+  .table-sticky td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--surface);
+  }
+  .table-sticky thead th:first-child {
+    background: var(--surface2);
+    z-index: 3;
+  }
+  .table-sticky tbody tr:hover td:first-child {
+    background: inherit;
+  }
+  /* Ombre subtile pour indiquer le scroll */
+  .table-sticky th:first-child::after,
+  .table-sticky td:first-child::after {
+    content: '';
+    position: absolute;
+    top: 0; right: -8px; bottom: 0;
+    width: 8px;
+    background: linear-gradient(to right, rgba(31,140,136,0.06), transparent);
+    pointer-events: none;
+  }
   table { width: 100%; border-collapse: collapse; }
   th { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text3); padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface2); }
   td { padding: 13px 14px; font-size: 13.5px; color: var(--text2); border-bottom: 1px solid rgba(214,232,222,0.5); vertical-align: middle; }
@@ -163,6 +203,101 @@
 #iosGuide .ios-step .num { width:26px; height:26px; border-radius:50%; background:var(--grad); color:white; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 #iosGuide .ios-close { margin-top:6px; width:100%; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:9px; font-family:'Sora',sans-serif; font-size:13px; font-weight:600; color:var(--text2); cursor:pointer; }
 
+  /* ══ PAGE ACCUEIL ══ */
+  .home-header {
+    margin-bottom: 40px;
+    padding-top: 8px;
+  }
+  .home-greeting {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .home-subtitle {
+    font-size: 15px;
+    color: var(--text3);
+    font-weight: 400;
+  }
+  .home-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 900px;
+  }
+  .home-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .home-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--grad);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .home-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--g2);
+  }
+  .home-card:hover::before { opacity: 1; }
+  .home-card:active { transform: scale(0.98); }
+  .home-card-icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+    display: block;
+    line-height: 1;
+  }
+  .home-card-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+  }
+  .home-card-desc {
+    font-size: 13px;
+    color: var(--text3);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .home-card-arrow {
+    font-size: 18px;
+    color: var(--g2);
+    font-weight: 700;
+    transition: transform 0.2s;
+  }
+  .home-card:hover .home-card-arrow { transform: translateX(4px); }
+
+  @media (max-width: 768px) {
+    .home-header { margin-bottom: 28px; }
+    .home-greeting { font-size: 28px; }
+    .home-cards { grid-template-columns: 1fr; gap: 14px; max-width: 100%; }
+    .home-card { padding: 22px 20px; display: flex; align-items: center; gap: 18px; border-radius: 16px; }
+    .home-card::before { width: 3px; height: 100%; top: 0; left: 0; right: auto; }
+    .home-card-icon { font-size: 32px; margin-bottom: 0; flex-shrink: 0; }
+    .home-card-title { font-size: 18px; margin-bottom: 4px; }
+    .home-card-desc { font-size: 12px; margin-bottom: 0; }
+    .home-card-arrow { margin-left: auto; flex-shrink: 0; }
+  }
+
+  /* ── Nav items inside drawer (all screens) ── */
+  .sidebar .nav-section { padding: 14px 18px 6px; }
+  .sidebar .nav-item { padding: 12px 18px; font-size: 14px; margin: 0 6px; border-radius: 10px; }
+  .sidebar .nav-item .icon { font-size: 18px; }
+
   /* ── Cat edit rows (modal catégories) ── */
   .cat-edit-row {
     display: flex; align-items: center; gap: 8px;
@@ -180,14 +315,13 @@
 
   /* ── Burger (masqué sur desktop) ── */
   #burgerBtn {
-    display: none;
+    display: flex;
     align-items: center; justify-content: center;
     width: 40px; height: 40px;
     border: none; background: none;
     cursor: pointer; border-radius: 10px;
     color: var(--text2); flex-shrink: 0;
     transition: background 0.15s;
-    z-index: 101;
   }
   #burgerBtn:hover { background: var(--surface2); }
 
@@ -198,6 +332,7 @@
     opacity: 0; transition: opacity 0.25s ease;
   }
   #drawerOverlay.open { opacity: 1; }
+
 
   /* ── FAB ── */
   #fab {
@@ -226,38 +361,23 @@
 
   /* ── TABLET ≤ 1024px ── */
   @media (max-width: 1024px) {
-    .sidebar { width: 200px; padding: 20px 10px; }
-    .main { margin-left: 200px; padding: 28px 22px; }
     .grid-2 { grid-template-columns: 1fr; gap: 20px; }
     .nutri-cards { grid-template-columns: repeat(3, 1fr); }
     .card-header .flex { flex-wrap: wrap; gap: 6px; }
+    .main { padding: 28px 24px; }
   }
 
   /* ── MOBILE ≤ 768px ── */
   @media (max-width: 768px) {
 
-    /* Header : burger gauche | logo centre | status droite */
-    .header {
-      padding: 0 12px 0 8px;
-      height: 56px;
-      gap: 0;
-    }
-    #burgerBtn { display: flex; }
-
-    /* Logo centré absolument dans le header */
-    .header > div:nth-child(2),   /* logo-mark */
-    .header > div:nth-child(3) {  /* logo text+sub */
-      position: static;
-    }
-    /* Wrap logo-mark + text en groupe centré */
-    .header > div:nth-child(2) { margin-left: auto; }
-    .header > div:nth-child(3) { margin-right: auto; }
-
+    /* Header mobile : burger | logo centré | status */
+    .header { padding: 0 12px 0 8px; height: 56px; gap: 0; }
+    /* Logo centré : margin auto de chaque côté du groupe logo */
+    .header > div:nth-child(2) { margin-left: auto; flex-shrink: 0; }
+    .header > div:nth-child(3) { margin-right: auto; flex-shrink: 0; }
     .logo-sub { display: none; }
     .logo-text { font-size: 18px; }
     .logo-mark { width: 34px; height: 34px; font-size: 17px; border-radius: 10px; }
-
-    /* Droite header: uniquement le badge status */
     #userLabel { display: none !important; }
     #btnLogout  { display: none !important; }
     #statusDot  { font-size: 10px; padding: 2px 7px; flex-shrink: 0; }
@@ -265,24 +385,10 @@
 
     /* Layout */
     .layout { padding-top: 56px; }
-    .main { margin-left: 0; padding: 18px 14px 90px; }
+    .main { margin-left: 0 !important; padding: 18px 14px 90px; }
 
-    /* Sidebar → Drawer */
-    .sidebar {
-      width: 282px; top: 0; bottom: 0; left: 0;
-      transform: translateX(-100%);
-      transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
-      z-index: 150; padding: 0;
-      border-right: none;
-      box-shadow: 6px 0 40px rgba(15,30,22,0.18);
-      overflow-y: auto;
-      gap: 2px;
-    }
-    .sidebar.drawer-open { transform: translateX(0); }
-    /* Nav items dans le drawer */
-    .sidebar .nav-section { padding: 14px 18px 6px; }
-    .sidebar .nav-item { padding: 12px 18px; font-size: 14px; margin: 0 6px; border-radius: 10px; }
-    .sidebar .nav-item .icon { font-size: 18px; }
+    /* Nav items dans le drawer (mobile) */
+    .sidebar .nav-item { padding: 12px 18px; font-size: 14px; margin: 0 6px; }
     .sidebar .divider { margin: 8px 16px; }
 
     /* FAB — masqué car bouton inline à côté du titre */
@@ -322,18 +428,30 @@
     /* Grid */
     .grid-2 { grid-template-columns: 1fr; gap: 16px; }
 
-    /* Tables : scroll horizontal DANS le conteneur uniquement */
+    /* Tables mobile : col Nom sticky, reste scrollable */
     .table-wrap {
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      /* Empêche le scroll de remonter à la page */
       overscroll-behavior-x: contain;
+      /* Empêche la table de dépasser le viewport */
+      max-width: 100%;
     }
-    /* Pas de min-width fixe — laisse les colonnes se compresser naturellement */
-    table { min-width: 0; width: max-content; min-width: 100%; }
-    th { padding: 9px 10px; font-size: 10px; white-space: nowrap; }
-    td { padding: 10px 10px; font-size: 12px; white-space: nowrap; }
-    .td-name { white-space: normal; min-width: 100px; }
+    table { width: max-content; min-width: 100%; }
+    th { padding: 8px 10px; font-size: 10.5px; white-space: nowrap; }
+    td { padding: 9px 10px; font-size: 12px; white-space: nowrap; }
+    /* Colonne Nom : fixe et lisible */
+    .table-sticky th:first-child,
+    .table-sticky td:first-child {
+      min-width: 120px;
+      max-width: 150px;
+      white-space: normal;
+      word-break: break-word;
+    }
+    /* Colonnes data : compactes */
+    .table-sticky th:not(:first-child),
+    .table-sticky td:not(:first-child) {
+      min-width: 80px;
+    }
 
     /* Ingredient editor rows */
     .ing-row { grid-template-columns: 1fr 76px auto; gap: 7px; }
@@ -431,6 +549,19 @@
     #fab { width: 52px; height: 52px; font-size: 25px; }
   }
 
+
+  /* ── Bouton retour accueil ── */
+  .btn-back-home {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600;
+    color: var(--text3); background: none; border: 1.5px solid var(--border);
+    padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    transition: all 0.15s; margin-bottom: 10px; white-space: nowrap;
+  }
+  .btn-back-home:hover { color: var(--g3); border-color: var(--g2); background: rgba(45,168,130,0.06); }
+  @media (max-width: 768px) {
+    .btn-back-home { font-size: 11px; padding: 5px 10px; margin-bottom: 8px; }
+  }
 </style>
 </head>
 <body>
@@ -494,7 +625,8 @@
 <div class="layout">
   <nav class="sidebar">
     <div class="nav-section">Navigation</div>
-    <div class="nav-item active" onclick="showPage('recettes')" id="nav-recettes"><span class="icon">🍽️</span> Recettes</div>
+    <div class="nav-item" onclick="showPage('accueil')" id="nav-accueil"><span class="icon">🏠</span> Accueil</div>
+    <div class="nav-item" onclick="showPage('recettes')" id="nav-recettes"><span class="icon">🍽️</span> Recettes</div>
     <div class="nav-item" onclick="showPage('ingredients')" id="nav-ingredients"><span class="icon">🥦</span> Ingrédients</div>
     <div class="nav-item" onclick="showPage('fournisseurs')" id="nav-fournisseurs"><span class="icon">🏭</span> Fournisseurs</div>
     <div class="divider" style="margin:8px 0"></div>
@@ -508,10 +640,39 @@
   </nav>
 
   <main class="main">
+    <!-- PAGE ACCUEIL -->
+    <div id="pageAccueil" style="display:none">
+      <div class="home-header">
+        <div class="home-greeting" id="homeGreeting">Bonjour 👋</div>
+        <div class="home-subtitle">Que souhaitez-vous faire aujourd'hui ?</div>
+      </div>
+      <div class="home-cards">
+        <div class="home-card" onclick="showPage('recettes')">
+          <div class="home-card-icon">🍽️</div>
+          <div class="home-card-title">Recettes</div>
+          <div class="home-card-desc">Créez, composez et exportez vos fiches techniques</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+        <div class="home-card" onclick="showPage('ingredients')">
+          <div class="home-card-icon">🥦</div>
+          <div class="home-card-title">Ingrédients</div>
+          <div class="home-card-desc">Gérez votre bibliothèque d'ingrédients et valeurs nutritionnelles</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+        <div class="home-card" onclick="showPage('fournisseurs')">
+          <div class="home-card-icon">🏭</div>
+          <div class="home-card-title">Fournisseurs</div>
+          <div class="home-card-desc">Suivez vos fournisseurs, contacts et agréments</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+      </div>
+    </div>
+
     <!-- PAGE RECETTES -->
-    <div id="pageRecettes">
+    <div id="pageRecettes" style="display:none">
       <div class="page-header">
         <div>
+          <button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
           <div class="page-title">Mes <span>Recettes</span></div>
           <div class="text-sm text-muted mt-2" id="recetteCount">— recettes</div>
         </div>
@@ -529,7 +690,7 @@
             </div>
           </div>
           <div class="table-wrap">
-            <table>
+            <table class="table-sticky">
               <thead><tr><th>Nom</th><th>Catégorie</th><th></th></tr></thead>
               <tbody id="recettesBody"><tr><td colspan="3"><div class="empty"><div class="empty-icon">🍽️</div><p>Aucune recette</p></div></td></tr></tbody>
             </table>
@@ -604,7 +765,8 @@
     <!-- PAGE INGRÉDIENTS -->
     <div id="pageIngredients" style="display:none">
       <div class="page-header">
-        <div><div class="page-title">Mes <span>Ingrédients</span></div><div class="text-sm text-muted mt-2" id="ingCount">— ingrédients</div></div>
+        <div><button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+          <div class="page-title">Mes <span>Ingrédients</span></div><div class="text-sm text-muted mt-2" id="ingCount">— ingrédients</div></div>
         <button class="btn btn-primary" onclick="openModalIngredient()"><span>＋</span> Nouvel ingrédient</button>
       </div>
       <div class="card">
@@ -613,7 +775,7 @@
           <div class="search-wrap" style="width:200px"><input class="form-input" id="searchIng" placeholder="Rechercher…" style="padding:7px 10px 7px 34px;font-size:12px;" oninput="filterIngredients()"></div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="table-sticky">
             <thead><tr><th>Nom</th><th>Type</th><th>Énergie</th><th>Protéines</th><th>Glucides</th><th>Lipides</th><th>AGS</th><th>Allergènes</th><th>Prix/unité</th><th>Fournisseur</th><th>DDM/DLC</th><th></th></tr></thead>
             <tbody id="ingredientsBody"><tr><td colspan="12"><div class="empty"><div class="empty-icon">🥦</div><p>Aucun ingrédient</p></div></td></tr></tbody>
           </table>
@@ -624,7 +786,8 @@
     <!-- PAGE FOURNISSEURS -->
     <div id="pageFournisseurs" style="display:none">
       <div class="page-header">
-        <div><div class="page-title">Mes <span>Fournisseurs</span></div><div class="text-sm text-muted mt-2" id="fournCount">— fournisseurs</div></div>
+        <div><button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+          <div class="page-title">Mes <span>Fournisseurs</span></div><div class="text-sm text-muted mt-2" id="fournCount">— fournisseurs</div></div>
         <button class="btn btn-primary" onclick="openModalFournisseur()"><span>＋</span> Nouveau fournisseur</button>
       </div>
       <div class="card">
@@ -633,7 +796,7 @@
           <div class="search-wrap" style="width:200px"><input class="form-input" id="searchFourn" placeholder="Rechercher…" style="padding:7px 10px 7px 34px;font-size:12px" oninput="filterFournisseurs()"></div>
         </div>
         <div class="table-wrap">
-          <table>
+          <table class="table-sticky">
             <thead><tr><th>Nom</th><th>Contact</th><th>Email</th><th>Téléphone</th><th>Agrément</th><th></th></tr></thead>
             <tbody id="fournisseursBody"><tr><td colspan="6"><div class="empty"><div class="empty-icon">🏭</div><p>Aucun fournisseur</p></div></td></tr></tbody>
           </table>
@@ -859,7 +1022,7 @@ async function init() {
     splashProgress(100, 'Prêt !');
     document.getElementById('statusDot').className = 'badge badge-green';
     document.getElementById('statusDot').textContent = '🟢 Connecté';
-    setTimeout(hideSplash, 400);
+    setTimeout(() => { hideSplash(); showPage('accueil'); }, 400);
   } catch(e) {
     splashProgress(100, 'Erreur de connexion');
     document.getElementById('splashMsg').style.color = 'var(--danger)';
@@ -1042,8 +1205,9 @@ async function deleteCategorie(i) {
 
 // ── PAGES ──
 function showPage(p) {
-  ['recettes','ingredients','fournisseurs'].forEach(name => {
-    document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1)).style.display = p === name ? 'block' : 'none';
+  ['accueil','recettes','ingredients','fournisseurs'].forEach(name => {
+    const el = document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1));
+    if (el) el.style.display = p === name ? 'block' : 'none';
     const nav = document.getElementById('nav-' + name);
     if (nav) nav.classList.toggle('active', p === name);
   });
@@ -1663,6 +1827,9 @@ async function doLogin() {
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('userLabel').textContent = email;
     document.getElementById('userLabel').style.display = 'inline';
+    const firstName = email.split('@')[0].split('.')[0];
+    const greet = document.getElementById('homeGreeting');
+    if (greet) greet.textContent = 'Bonjour ' + firstName.charAt(0).toUpperCase() + firstName.slice(1) + ' 👋';
     document.getElementById('btnLogout').style.display = 'inline-flex';
     init();
   } catch(e) {
@@ -1834,20 +2001,17 @@ if ('serviceWorker' in navigator) {
   window.toggleDrawer = () => sidebar.classList.contains('drawer-open') ? closeDrawer() : openDrawer();
   window.closeDrawer  = closeDrawer;
 
-  // Intercepter showPage pour fermer le drawer AVANT la navigation
-  // (plus fiable que les listeners sur .nav-item qui peuvent être ajoutés dynamiquement)
+  // Intercepter showPage : fermer le drawer sur TOUS les écrans
   const _origShowPage = window.showPage;
   window.showPage = function(p) {
-    if (isMobile() && sidebar.classList.contains('drawer-open')) {
-      closeDrawer();
-    }
+    if (sidebar.classList.contains('drawer-open')) closeDrawer();
     _origShowPage(p);
   };
 
-  // Fallback : aussi sur les nav-items existants (catégories dynamiques, etc.)
+  // Fallback : nav-items dynamiques (catégories)
   sidebar.addEventListener('click', e => {
     const item = e.target.closest('.nav-item');
-    if (item && isMobile()) closeDrawer();
+    if (item) setTimeout(closeDrawer, 80); // léger délai pour laisser active se mettre
   });
 
   // Empêcher ::before de créer un espace vide (déjà géré par le banner injecté)
