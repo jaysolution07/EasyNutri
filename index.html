@@ -562,6 +562,66 @@
   @media (max-width: 768px) {
     .btn-back-home { font-size: 11px; padding: 5px 10px; margin-bottom: 8px; }
   }
+
+  /* ════════════════════════════════
+     MODULE PRODUCTION
+  ════════════════════════════════ */
+  .prod-stepper {
+    display: flex; align-items: center; gap: 0;
+    margin-bottom: 24px; padding: 0 4px;
+  }
+  .prod-step {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--text3);
+    transition: color 0.2s;
+  }
+  .prod-step.active { color: #e07c20; }
+  .prod-step.done   { color: var(--g2); }
+  .prod-step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid currentColor;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0;
+    background: white; transition: all 0.2s;
+  }
+  .prod-step.active .prod-step-num { background: #f0a500; border-color: #f0a500; color: white; }
+  .prod-step.done   .prod-step-num { background: var(--g2); border-color: var(--g2); color: white; }
+  .prod-step-line { flex: 1; height: 2px; background: var(--border); margin: 0 8px; min-width: 20px; }
+  .prod-step-lbl { white-space: nowrap; }
+
+  .prod-label-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .prod-label-card {
+    border: 2px solid var(--border);
+    border-radius: 12px; padding: 14px 10px;
+    text-align: center; cursor: pointer;
+    transition: all 0.18s ease;
+    background: var(--surface2);
+  }
+  .prod-label-card:hover { border-color: #f0a500; background: rgba(240,165,0,0.05); }
+  .prod-label-card.active { border-color: #f0a500; background: rgba(240,165,0,0.08); box-shadow: 0 0 0 3px rgba(240,165,0,0.15); }
+  .prod-label-icon { font-size: 24px; margin-bottom: 6px; }
+  .prod-label-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .prod-label-dim  { font-size: 10px; color: var(--text3); }
+
+  .prod-lot-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 9px; padding: 8px 12px;
+  }
+  .prod-lot-icon { font-size: 18px; flex-shrink: 0; }
+  .prod-lot-name { font-size: 12.5px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prod-lot-input { width: 150px; flex-shrink: 0; font-size: 12px; padding: 6px 10px !important; }
+
+  @media (max-width: 600px) {
+    .prod-label-grid { grid-template-columns: repeat(2, 1fr); }
+    .prod-lot-row { flex-wrap: wrap; }
+    .prod-lot-input { width: 100%; }
+  }
 </style>
 </head>
 <body>
@@ -704,6 +764,7 @@
               <div class="card-title" id="editorTitle">Édition</div>
               <div class="flex gap-2">
                 <button class="btn btn-sm btn-secondary" onclick="printFT()">📄 Fiche PDF</button>
+                <button class="btn btn-sm btn-primary" onclick="openModalProduction()" style="background:linear-gradient(135deg,#f0a500,#e07c20);box-shadow:0 4px 14px rgba(240,165,0,0.3)">🏭 Production</button>
                 <button class="btn btn-sm btn-danger" onclick="removeRecette()">🗑️</button>
               </div>
             </div>
@@ -776,8 +837,8 @@
         </div>
         <div class="table-wrap">
           <table class="table-sticky">
-            <thead><tr><th>Nom</th><th>Type</th><th>Énergie</th><th>Protéines</th><th>Glucides</th><th>Lipides</th><th>AGS</th><th>Allergènes</th><th>Prix/unité</th><th>Fournisseur</th><th>DDM/DLC</th><th></th></tr></thead>
-            <tbody id="ingredientsBody"><tr><td colspan="12"><div class="empty"><div class="empty-icon">🥦</div><p>Aucun ingrédient</p></div></td></tr></tbody>
+            <thead><tr><th>Nom</th><th>Type</th><th>Énergie</th><th>Protéines</th><th>Glucides</th><th>Sucres</th><th>Lipides</th><th>AGS</th><th>Sel</th><th>Fibres</th><th>Allergènes</th><th>Prix/unité</th><th>Fournisseur</th><th>DDM/DLC</th><th></th></tr></thead>
+            <tbody id="ingredientsBody"><tr><td colspan="14"><div class="empty"><div class="empty-icon">🥦</div><p>Aucun ingrédient</p></div></td></tr></tbody>
           </table>
         </div>
       </div>
@@ -893,7 +954,10 @@
 <!-- MODAL INGREDIENT -->
 <div class="modal-overlay" id="modalIngredient">
   <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
-    <div class="modal-title" id="modalIngTitle">Nouvel ingrédient</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div class="modal-title" style="margin:0" id="modalIngTitle">Nouvel ingrédient</div>
+  <button class="btn btn-secondary btn-sm" onclick="openImportOFFModal()" id="btnImportOFF" style="white-space:nowrap">🔍 Importer depuis OFF</button>
+</div>
     <div class="form-row">
       <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nom de l'ingrédient</label><input class="form-input" id="ingNom" placeholder="Ex: Poulet grillé, Tomate fraîche…"></div>
     </div>
@@ -909,7 +973,19 @@
     <div id="ingNutriFields">
       <div class="text-sm text-muted" style="margin-bottom:12px">Valeurs nutritionnelles pour <strong>100g</strong></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Énergie (kcal)</label><input class="form-input" id="ingEnergie" type="number" placeholder="0"></div>
+        <div class="form-group">
+  <label class="form-label">Énergie</label>
+  <div style="display:flex;gap:8px">
+    <div style="position:relative;flex:1">
+      <input class="form-input" id="ingKjoules" type="number" placeholder="0" style="padding-right:36px">
+      <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">kJ</span>
+    </div>
+    <div style="position:relative;flex:1">
+      <input class="form-input" id="ingEnergie" type="number" placeholder="0" style="padding-right:40px">
+      <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3)">kcal</span>
+    </div>
+  </div>
+</div>
         <div class="form-group"><label class="form-label">Protéines (g)</label><input class="form-input" id="ingProteines" type="number" placeholder="0"></div>
       </div>
       <div class="form-row">
@@ -1477,17 +1553,18 @@ function renderEtiquetage() {
   }).join(', ') + '.';
 }
 function calcNutri() {
-  const fields = ['energie','proteines','glucides','sucres','lipides','sel'];
-  const labels = ['Énergie','Protéines','Glucides','Sucres','Lipides','Sel'];
-  const units = ['kcal','g','g','g','g','g'];
-  const keys = ['energie_kcal','proteines_g','glucides_g','sucres_g','lipides_g','sel_g'];
-  const colors = ['#e8a838','#2da882','#e05c88','#e05c88','#e07c5c','#5c7ce0'];
-  let total = {}; fields.forEach(f => total[f] = 0);
+const fields = ['energie','proteines','glucides','sucres','lipides','ags','sel','fibres'];
+const labels = ['Énergie','Protéines','Glucides','Sucres','Lipides','AGS','Sel','Fibres'];
+const units = ['kcal','g','g','g','g','g','g','g'];
+const keys = ['energie_kcal','proteines_g','glucides_g','sucres_g','lipides_g','Ags','sel_g','fibres_g'];
+const colors = ['#e8a838','#2da882','#e05c88','#e05c88','#e07c5c','#e07c5c','#5c7ce0','#67b54b'];
+  let total = {}; fields.forEach(f => total[f] = 0); total['kjoules'] = 0;
   let poidsTotal = 0, prixTotal = 0;
   RECETTE.ingredients.forEach(row => {
     const ing = ING.find(x=>x.id==row.ingredient); if (!ing) return;
     const p = parseFloat(row.poids) || 0; poidsTotal += p;
     keys.forEach((k,i) => total[fields[i]] += (parseFloat(ing[k])||0)*p/100);
+total['kjoules'] += (parseFloat(ing['energie_kjoules'])||0)*p/100;
     const prixKg = parseFloat(ing.prix_kg) || 0;
     if (prixKg > 0) { const equivG = ing.unite==='L' ? (parseFloat(ing.equiv_poids_g)||1000) : 1000; prixTotal += (p/equivG)*prixKg; }
   });
@@ -1501,7 +1578,10 @@ function calcNutri() {
   if (!poidsTotal) { document.getElementById('nutriSummary').style.display = 'none'; return; }
   document.getElementById('nutriSummary').style.display = 'block';
   document.getElementById('poidsTotal').textContent = poidsTotal + 'g total';
-  document.getElementById('nutriCards').innerHTML = fields.map((f,i) => `<div class="nutri-card"><div class="val" style="color:${colors[i]}">${(total[f]/poidsTotal*100).toFixed(1)}</div><div class="unit">${units[i]}</div><div class="lbl">${labels[i]}</div></div>`).join('');
+document.getElementById('nutriCards').innerHTML = fields.map((f,i) => {
+  const extra = f === 'energie' ? `<div style="font-size:10px;color:var(--text3)">${(total['kjoules']/poidsTotal*100).toFixed(1)} kJ</div>` : '';
+  return `<div class="nutri-card"><div class="val" style="color:${colors[i]}">${(total[f]/poidsTotal*100).toFixed(1)}</div><div class="unit">${units[i]}</div>${extra}<div class="lbl">${labels[i]}</div></div>`;
+}).join('');
   renderEtiquetage();
 }
 
@@ -1591,7 +1671,14 @@ function renderIngredientsList() {
     return `<tr>
       <td class="td-name">${escHtml(i.nom)}</td>
       <td>${i.type==='compose'?'<span class="badge badge-blue">Composé</span>':'<span class="badge badge-green">Simple</span>'}</td>
-      <td>${fmtNum(i.energie_kcal)} kcal</td><td>${fmtNum(i.proteines_g)} g</td><td>${fmtNum(i.glucides_g)} g</td><td>${fmtNum(i.lipides_g)} g</td><td>${fmtNum(i.Ags)} g</td>
+      <td>${i.energie_kjoules ? fmtNum(i.energie_kjoules)+'kJ / ' : ''}${fmtNum(i.energie_kcal)} kcal</td>
+<td>${fmtNum(i.proteines_g)} g</td>
+<td>${fmtNum(i.glucides_g)} g</td>
+<td>${fmtNum(i.sucres_g)} g</td>
+<td>${fmtNum(i.lipides_g)} g</td>
+<td>${fmtNum(i.Ags)} g</td>
+<td>${fmtNum(i.sel_g)} g</td>
+<td>${fmtNum(i.fibres_g)} g</td>
       <td>${allergs.length ? allergs.map(a=>`<span class="badge badge-orange" style="margin:1px">${escHtml(a)}</span>`).join('') : '<span class="text-muted text-xs">—</span>'}</td>
       <td>${prixCell}</td>
       <td>${i.fournisseur ? escHtml(i.fournisseur) : '<span class="text-muted text-xs">—</span>'}</td>
@@ -1664,7 +1751,7 @@ function populateFournisseurSelect(selectedVal) {
   sel.innerHTML = `<option value="">— Sélectionner —</option>` + list.map(f=>`<option value="${escHtml(f.id)}" ${f.id==selectedId?'selected':''}>${escHtml(f.nom)}</option>`).join('');
 }
 function openModalIngredient(id) {
-  ['ingNom','ingEnergie','ingProteines','ingGlucides','ingSucres','ingLipides','ingAgs','ingSel','ingFibres','ingEditId','ingPrix'].forEach(f=>document.getElementById(f).value='');
+  ['ingNom','ingKjoules','ingEnergie','ingProteines','ingGlucides','ingSucres','ingLipides','ingAgs','ingSel','ingFibres','ingEditId','ingPrix'].forEach(f=>document.getElementById(f).value='');
   document.getElementById('ingDlcType').value=''; document.getElementById('ingUnite').value='kg'; document.getElementById('ingEquivPoids').value='1000';
   document.getElementById('equivPoidsGroup').style.display='none'; document.getElementById('composeAllergenesPreview').style.display='none';
   document.getElementById('btnDeleteIng').style.display='none'; document.getElementById('modalIngTitle').textContent='Nouvel ingrédient';
@@ -1685,7 +1772,7 @@ function openModalIngredient(id) {
       setType('compose'); renderComposeRows(); renderAllergenesCheckboxes([]); updateComposeAllergenesPreview();
     } else {
       setType('simple');
-      document.getElementById('ingEnergie').value=ing.energie_kcal||''; document.getElementById('ingProteines').value=ing.proteines_g||'';
+document.getElementById('ingKjoules').value = ing.energie_kjoules || '';      document.getElementById('ingEnergie').value=ing.energie_kcal||''; document.getElementById('ingProteines').value=ing.proteines_g||'';
       document.getElementById('ingGlucides').value=ing.glucides_g||''; document.getElementById('ingSucres').value=ing.sucres_g||'';
       document.getElementById('ingLipides').value=ing.lipides_g||''; document.getElementById('ingAgs').value=ing.Ags||'';
       document.getElementById('ingSel').value=ing.sel_g||''; document.getElementById('ingFibres').value=ing.fibres_g||'';
@@ -1735,6 +1822,7 @@ async function saveIngredient() {
   payload.prix_kg = parseDecimalFr(document.getElementById('ingPrix').value) || 0;
   payload.equiv_poids_g = parseDecimalFr(document.getElementById('ingEquivPoids').value) || 1000;
   if (currentIngType === 'simple') {
+payload.energie_kjoules = parseFloat(document.getElementById('ingKjoules').value) || 0;
     payload.energie_kcal=parseFloat(document.getElementById('ingEnergie').value)||0;
     payload.proteines_g=parseFloat(document.getElementById('ingProteines').value)||0;
     payload.glucides_g=parseFloat(document.getElementById('ingGlucides').value)||0;
@@ -1774,6 +1862,1301 @@ async function deleteIngredient() {
     renderIngredientsList();
   } catch(e) { toast('Erreur', 'error'); btnLoading(btn, false); }
 }
+// ════════════════════════════════════════════════════════
+//  MODULE PRODUCTION
+// ════════════════════════════════════════════════════════
+let PROD = {
+  lotRecette: '', poidsNet: '', dateType: 'DLC', dateLimite: '',
+  mentions: '', lotsIng: {}, format: 'pdf'
+};
+
+function openModalProduction() {
+  if (!RECETTE.id) return;
+  PROD = { lotRecette:'', poidsNet:'', dateType:'DLC', dateLimite:'', mentions:'', lotsIng:{}, format:'pdf' };
+  document.getElementById('prodNbEtiquettes').value = '1';
+
+  const nom = document.getElementById('nom').value || 'Recette';
+  document.getElementById('prodRecetteName').textContent = nom;
+  document.getElementById('prodLotRecette').value = '';
+  document.getElementById('prodPoidsNet').value = '';
+  document.getElementById('prodMentions').value = '';
+  document.getElementById('prodDateLimite').value = '';
+  setProdDateType('DLC');
+
+  const cont = document.getElementById('prodLotsIngredients');
+  cont.innerHTML = '';
+  const seen = new Set();
+
+  // Calcul poids total pour QUID
+  const poidsTotal = RECETTE.ingredients.reduce((acc, r) => acc + (parseFloat(r.poids) || 0), 0);
+
+  RECETTE.ingredients.forEach(row => {
+    const ing = ING.find(x => x.id == row.ingredient);
+    if (!ing || seen.has(ing.id)) return;
+    seen.add(ing.id);
+
+    // QUID %
+    const quidHtml = row.quid && poidsTotal > 0
+      ? `<span style="font-size:10px;color:#e07c20;font-weight:700;margin-left:4px">(${(parseFloat(row.poids)/poidsTotal*100).toFixed(1)}%)</span>`
+      : '';
+
+    // Composition sous-ingrédients si composé
+    let subsHtml = '';
+    if (ing.type === 'compose') {
+      const subs = getSubsForIng(ing);
+      if (subs?.length) {
+        const subParts = subs.map(s => {
+          const sub = ING.find(x => x.id == s.ingredient);
+          if (!sub) return '?';
+          const hasAllergen = sub.allergenes && String(sub.allergenes).split(',').map(a => a.trim()).filter(Boolean).length > 0;
+          return hasAllergen
+            ? `<u><strong>${escHtml(sub.nom)}</strong></u>`
+            : escHtml(sub.nom);
+        });
+        subsHtml = `<div style="font-size:10px;color:var(--text3);margin-top:2px">(${subParts.join(', ')})</div>`;
+      }
+    }
+
+    const div = document.createElement('div');
+    div.className = 'prod-lot-row';
+    div.innerHTML = `
+      <span class="prod-lot-icon">${ing.type === 'compose' ? '🍲' : '🥬'}</span>
+      <div style="flex:1;min-width:0;overflow:hidden">
+        <div style="display:flex;align-items:center;flex-wrap:wrap">
+          <div class="prod-lot-name" title="${escHtml(ing.nom)}">${escHtml(ing.nom)}</div>
+          ${quidHtml}
+        </div>
+        ${subsHtml}
+      </div>
+      <input class="form-input prod-lot-input" placeholder="N° de lot" data-ing-id="${ing.id}">
+    `;
+    cont.appendChild(div);
+  });
+
+  document.getElementById('prodPrinterIp').value   = '';
+  document.getElementById('prodPrinterPort').value = '9100';
+
+  prodGoStep(1);
+  openModal('modalProduction');
+}
+function setProdDateType(type) {
+  PROD.dateType = type;
+  document.getElementById('prodTypeDLC').classList.toggle('active',  type === 'DLC');
+  document.getElementById('prodTypeDLUO').classList.toggle('active', type === 'DLUO');
+  document.getElementById('prodDateLabel').textContent =
+    type === 'DLC' ? "À consommer jusqu'au" : "À consommer de préférence avant le";
+}
+
+function selectLabelFormat(el, format) {
+  document.querySelectorAll('.prod-label-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  PROD.format = format;
+  const isZpl = format !== 'pdf';
+  document.getElementById('prodZplConfig').style.display = isZpl ? 'block' : 'none';
+  renderLabelPreview();
+}
+
+function prodGoStep(n) {
+  if (n === 2) {
+    const lot = document.getElementById('prodLotRecette').value.trim();
+    if (!lot) { toast('Entrez un n° de lot pour la recette', 'error'); return; }
+    const date = document.getElementById('prodDateLimite').value;
+    if (!date) { toast('Choisissez une date limite', 'error'); return; }
+    PROD.lotRecette = lot;
+    PROD.poidsNet   = document.getElementById('prodPoidsNet').value.trim();
+    PROD.dateLimite = date;
+    PROD.mentions   = document.getElementById('prodMentions').value.trim();
+    document.querySelectorAll('#prodLotsIngredients [data-ing-id]').forEach(inp => {
+      PROD.lotsIng[inp.dataset.ingId] = inp.value.trim();
+    });
+  }
+  if (n === 3) {
+    buildRecap();
+  }
+  [1,2,3].forEach(i => {
+    document.getElementById('prodStep' + i).style.display = i === n ? 'block' : 'none';
+    const ind = document.getElementById('step-ind-' + i);
+    ind.classList.toggle('active', i === n);
+    ind.classList.toggle('done',   i < n);
+  });
+  if (n === 2) renderLabelPreview();
+}
+
+// ── Rendu Canvas étiquette ──
+function renderLabelPreview() {
+  const wrap = document.getElementById('prodLabelPreviewWrap');
+  const canvas = document.getElementById('prodLabelCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const mentionsLive = document.getElementById('prodMentions')?.value.trim() || PROD.mentions || '';
+  const nom = document.getElementById('nom').value || 'Recette';
+  const dateStr = PROD.dateLimite ? new Date(PROD.dateLimite).toLocaleDateString('fr-FR') : '—';
+  const dateLabel = PROD.dateType === 'DLC' ? 'DLC :' : 'DLUO :';
+
+  const dims = {
+    pdf:         { w: 420, h: null, fixedH: false, label: 'A4 / PDF',    round: false, baseFontSize: 10 },
+    zpl_57x74:   { w: 215, h: null, fixedH: false, label: '57×74 mm',    round: false, baseFontSize: 9  },
+    zpl_50x50:   { w: 210, h: null, fixedH: false, label: '50×50 mm',    round: false, baseFontSize: 8  },
+    zpl_round60: { w: 240, h: 240,  fixedH: true,  label: '60 mm ronde', round: true,  baseFontSize: 8  },
+    zpl_101x51:  { w: 400, h: null, fixedH: false, label: '101×51 mm',   round: false, baseFontSize: 8  },
+    zpl_100x150: { w: 378, h: null, fixedH: false, label: '100×150 mm',  round: false, baseFontSize: 10 },
+  };
+
+  const d = dims[PROD.format] || dims['zpl_57x74'];
+  const SCALE = 2;
+  const W = d.w;
+  const FONT_MIN = 6;
+
+  // ── Calcul nutritionnel ──
+  let nutri = { energie: 0, energie_kj: 0, proteines: 0, glucides: 0, sucres: 0, lipides: 0, ags: 0, sel: 0, fibres: 0 };
+  let poidsTotal = 0;
+  RECETTE.ingredients.forEach(row => {
+    const ing = ING.find(x => x.id == row.ingredient); if (!ing) return;
+    const p = parseFloat(row.poids) || 0; poidsTotal += p;
+    nutri.energie_kj += (parseFloat(ing.energie_kjoules) || 0) * p / 100;
+    nutri.energie    += (parseFloat(ing.energie_kcal)    || 0) * p / 100;
+    nutri.proteines  += (parseFloat(ing.proteines_g)     || 0) * p / 100;
+    nutri.glucides   += (parseFloat(ing.glucides_g)      || 0) * p / 100;
+    nutri.sucres     += (parseFloat(ing.sucres_g)        || 0) * p / 100;
+    nutri.lipides    += (parseFloat(ing.lipides_g)       || 0) * p / 100;
+    nutri.ags        += (parseFloat(ing.Ags)             || 0) * p / 100;
+    nutri.sel        += (parseFloat(ing.sel_g)           || 0) * p / 100;
+    nutri.fibres     += (parseFloat(ing.fibres_g)        || 0) * p / 100;
+  });
+  const n100 = v => poidsTotal > 0 ? (v / poidsTotal * 100).toFixed(1) : '0.0';
+
+  // ── Segments ingrédients ──
+  const etiqItems = computeEtiquetage();
+  const ingSegments = [];
+  etiqItems.forEach((e, idx) => {
+    if (idx > 0) ingSegments.push({ text: ', ', allergen: false });
+    const isAllergen = e.allergs.length > 0;
+    if (e.isCompose && !e.eclater && e.ingId) {
+      const ing = ING.find(x => x.id == e.ingId);
+      const subs = ing ? getSubsForIng(ing) : null;
+      if (subs?.length) {
+        ingSegments.push({ text: e.nom, allergen: isAllergen });
+        if (e.quid) ingSegments.push({ text: ' ' + e.pct + '%', allergen: false });
+        ingSegments.push({ text: ' (', allergen: false });
+        subs.forEach((sub, si) => {
+          const subIng = ING.find(x => x.id == sub.ingredient);
+          if (!subIng) return;
+          if (si > 0) ingSegments.push({ text: ', ', allergen: false });
+          const subHasAllergen = subIng.allergenes && String(subIng.allergenes).split(',').map(a => a.trim()).filter(Boolean).length > 0;
+          ingSegments.push({ text: subIng.nom, allergen: subHasAllergen });
+        });
+        ingSegments.push({ text: ')', allergen: false });
+        return;
+      }
+    }
+    ingSegments.push({ text: e.nom, allergen: isAllergen });
+    if (e.quid) ingSegments.push({ text: ' ' + e.pct + '%', allergen: false });
+  });
+
+  // ══════════════════════════════════════════
+  // FONCTION DE RENDU
+  // ══════════════════════════════════════════
+  function doRender(fontSize, dryRun) {
+    const fs = fontSize;
+    const PAD = 6;
+    const lineH = fs + 3;
+    const labelFs = Math.max(FONT_MIN, fs - 1);
+    const maxW = W - PAD * 2;
+
+    // ── Helpers ──
+    const txt = (text, x, yy, size, color = '#1a2e25', bold = false) => {
+      if (dryRun) return;
+      ctx.font = `${bold ? '700' : '400'} ${size}px Sora, Arial`;
+      ctx.fillStyle = color;
+      ctx.fillText(String(text), x, yy);
+    };
+
+    const sep = (yy, x1, x2) => {
+      if (!dryRun) {
+        ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x1 ?? PAD, yy);
+        ctx.lineTo(x2 ?? W - PAD, yy);
+        ctx.stroke();
+      }
+      return 4;
+    };
+
+    const multiline = (text, x, yy, mW, size, lH, color = '#1a2e25', maxL = 99) => {
+      if (!dryRun) { ctx.font = `400 ${size}px Sora, Arial`; ctx.fillStyle = color; }
+      const words = text.split(' '); let line = '', count = 0;
+      for (const w of words) {
+        const test = line ? line + ' ' + w : w;
+        ctx.font = `400 ${size}px Sora, Arial`;
+        if (ctx.measureText(test).width > mW && line) {
+          if (!dryRun) ctx.fillText(line, x, yy);
+          yy += lH; line = w; count++;
+          if (count >= maxL) { if (!dryRun) ctx.fillText(line + '…', x, yy); return yy + lH; }
+        } else { line = test; }
+      }
+      if (line) { if (!dryRun) ctx.fillText(line, x, yy); yy += lH; }
+      return yy;
+    };
+
+    const drawIngSegs = (segs, x, yy, mW, size, lH, maxL = 99) => {
+      const tokens = [];
+      segs.forEach(seg => seg.text.split(/(\s+)/).forEach(w => tokens.push({ text: w, allergen: seg.allergen })));
+      let curX = x, count = 0;
+      for (const tok of tokens) {
+        if (!tok.text) continue;
+        ctx.font = tok.allergen ? `700 ${size}px Sora, Arial` : `400 ${size}px Sora, Arial`;
+        const tw = ctx.measureText(tok.text).width;
+        if (curX + tw > x + mW && curX > x) {
+          curX = x; yy += lH; count++;
+          if (count >= maxL) {
+            if (!dryRun) { ctx.fillStyle = '#666'; ctx.fillText('…', curX, yy); }
+            return yy + lH;
+          }
+        }
+        if (!dryRun) {
+          ctx.fillStyle = tok.allergen ? '#1a2e25' : '#555555';
+          ctx.fillText(tok.text, curX, yy);
+          if (tok.allergen && tok.text.trim()) {
+            ctx.strokeStyle = '#1a2e25'; ctx.lineWidth = 0.7;
+            ctx.beginPath(); ctx.moveTo(curX, yy + 2); ctx.lineTo(curX + tw, yy + 2); ctx.stroke();
+          }
+        }
+        curX += tw;
+      }
+      return yy + lH;
+    };
+
+    // Bloc nutri — libellés complets, chaque valeur sur sa ligne
+    // Si une ligne dépasse mW, elle passe automatiquement à la ligne suivante
+    const nutriBloc = (x, yy, size, mW) => {
+      const g = size + 3;
+      const lines = [
+        'Énergie : ' + n100(nutri.energie) + ' kcal / ' + n100(nutri.energie_kj) + ' kJ',
+        'Matières grasses : ' + n100(nutri.lipides) + ' g',
+        'dont acides gras saturés : ' + n100(nutri.ags) + ' g',
+        'Glucides : ' + n100(nutri.glucides) + ' g',
+        'dont sucres : ' + n100(nutri.sucres) + ' g',
+        'Fibres alimentaires : ' + n100(nutri.fibres) + ' g',
+        'Protéines : ' + n100(nutri.proteines) + ' g',
+        'Sel : ' + n100(nutri.sel) + ' g',
+      ];
+      for (const line of lines) {
+        if (mW) {
+          yy = multiline(line, x, yy, mW, size, g, '#1a2e25', 2);
+        } else {
+          txt(line, x, yy, size); yy += g;
+        }
+      }
+      return yy;
+    };
+
+    // Bloc nutri 2 colonnes pour formats larges
+    const nutriBlocCols = (x, yy, size, colW) => {
+      const g = size + 3;
+      const c2 = x + colW + 8;
+      txt('Énergie : ' + n100(nutri.energie) + ' kcal', x, yy, size);
+      txt('Protéines : ' + n100(nutri.proteines) + ' g', c2, yy, size); yy += g;
+      txt('soit ' + n100(nutri.energie_kj) + ' kJ', x, yy, size);
+      txt('Sel : ' + n100(nutri.sel) + ' g', c2, yy, size); yy += g;
+      txt('Matières grasses : ' + n100(nutri.lipides) + ' g', x, yy, size);
+      txt('Fibres : ' + n100(nutri.fibres) + ' g', c2, yy, size); yy += g;
+      txt('dont AGS : ' + n100(nutri.ags) + ' g', x, yy, size); yy += g;
+      txt('Glucides : ' + n100(nutri.glucides) + ' g', x, yy, size); yy += g;
+      txt('dont sucres : ' + n100(nutri.sucres) + ' g', x, yy, size); yy += g;
+      return yy;
+    };
+
+    // ══════════════════════════════════════════
+    // FORMAT RONDE 60mm
+    // ══════════════════════════════════════════
+    if (PROD.format === 'zpl_round60') {
+      const R = W / 2;
+      const cx = R, cy = R;
+
+      const chordW = (yy) => {
+        const dy = Math.abs(yy - cy);
+        if (dy >= R - 5) return 0;
+        return Math.max(0, 2 * Math.sqrt((R - 5) * (R - 5) - dy * dy) - PAD * 2);
+      };
+      const chordX = (yy) => cx - chordW(yy) / 2;
+
+      if (!dryRun) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, R - 2, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx, cy, R - 2, 0, Math.PI * 2);
+        ctx.clip();
+      }
+
+      const banH = Math.round(fs * 2 + 4);
+      const banY = cy - R + 5;
+
+      if (!dryRun) {
+        ctx.fillStyle = '#2e9e6e';
+        ctx.fillRect(0, banY, W, banH);
+        ctx.fillStyle = '#ffffff';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        ctx.font = `700 ${fs}px Sora, Arial`;
+        let nomT = nom;
+        while (nomT.length > 2 && ctx.measureText(nomT).width > W - PAD * 4) nomT = nomT.slice(0, -1);
+        if (nomT !== nom) nomT = nomT.slice(0, -1) + '…';
+        ctx.fillText(nomT, cx, banY + banH / 2);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+      }
+
+      let y = banY + banH + fs + 2;
+      const yMax = cy + R - 8;
+
+      const rLine = (text, color = '#1a2e25', bold = false, size = fs) => {
+        if (y + size > yMax) return;
+        const cw = chordW(y);
+        if (cw < size * 2) return;
+        if (!dryRun) {
+          ctx.font = `${bold ? '700' : '400'} ${size}px Sora, Arial`;
+          ctx.fillStyle = color;
+          let t = String(text);
+          while (t.length > 2 && ctx.measureText(t).width > cw) t = t.slice(0, -1);
+          if (t !== String(text)) t = t.slice(0, -2) + '…';
+          ctx.fillText(t, chordX(y), y);
+        }
+        y += size + 3;
+      };
+
+      const rSep = () => {
+        if (y + 4 >= yMax) return;
+        const cw = chordW(y);
+        sep(y, cx - cw / 2, cx + cw / 2);
+        y += 5;
+      };
+
+      // Infos principales
+      rLine(dateLabel + ' ' + dateStr + (PROD.poidsNet ? '  •  ' + PROD.poidsNet + ' g' : ''), '#1a2e25', true);
+      rLine('Lot : ' + PROD.lotRecette, '#d07020');
+
+      // Ingrédients
+      rSep();
+      if (y + fs < yMax) {
+        if (!dryRun) {
+          ctx.font = `700 ${labelFs}px Sora, Arial`;
+          ctx.fillStyle = '#999999';
+          ctx.fillText('Ingrédients :', chordX(y), y);
+        }
+        y += labelFs + 2;
+        const maxIngLines = Math.max(1, Math.floor((yMax - y - fs * 9) / lineH));
+        if (y + lineH <= yMax) {
+          y = drawIngSegs(ingSegments, chordX(y), y, chordW(y), fs, lineH, maxIngLines);
+        }
+      }
+
+      // Valeurs nutritionnelles — libellés complets, retour ligne auto
+      rSep();
+      if (y + fs * 3 < yMax) {
+        const nfs = Math.max(FONT_MIN, fs - 1);
+        const ng = nfs + 3;
+        if (!dryRun) {
+          ctx.font = `700 ${labelFs}px Sora, Arial`;
+          ctx.fillStyle = '#999999';
+          ctx.fillText('Valeurs pour 100 g :', chordX(y), y);
+        }
+        y += labelFs + 2;
+
+        const nutriLines = [
+          'Énergie : ' + n100(nutri.energie) + ' kcal / ' + n100(nutri.energie_kj) + ' kJ',
+          'Matières grasses : ' + n100(nutri.lipides) + ' g',
+          'dont acides gras saturés : ' + n100(nutri.ags) + ' g',
+          'Glucides : ' + n100(nutri.glucides) + ' g',
+          'dont sucres : ' + n100(nutri.sucres) + ' g',
+          'Fibres alimentaires : ' + n100(nutri.fibres) + ' g',
+          'Protéines : ' + n100(nutri.proteines) + ' g',
+          'Sel : ' + n100(nutri.sel) + ' g',
+        ];
+        for (const line of nutriLines) {
+          if (y + nfs >= yMax) break;
+          const cw = chordW(y);
+          if (!dryRun) {
+            ctx.font = `400 ${nfs}px Sora, Arial`;
+            ctx.fillStyle = '#1a2e25';
+            let t = line;
+            while (t.length > 2 && ctx.measureText(t).width > cw) t = t.slice(0, -1);
+            if (t !== line) t = t.slice(0, -2) + '…';
+            ctx.fillText(t, chordX(y), y);
+          }
+          y += ng;
+        }
+      }
+
+      // Mentions
+      if (mentionsLive && y + fs < yMax) {
+        rSep();
+        if (y + fs <= yMax) {
+          y = multiline(mentionsLive, chordX(y), y, chordW(y), Math.max(FONT_MIN, fs - 1), lineH, '#555555', 1);
+        }
+      }
+
+      if (!dryRun) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, R - 2, 0, Math.PI * 2);
+        ctx.strokeStyle = '#bbbbbb';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      return W;
+    }
+
+    // ══════════════════════════════════════════
+    // FORMATS RECTANGULAIRES — bandeau commun
+    // ══════════════════════════════════════════
+    const banH = Math.max(18, fs * 2.2);
+
+    if (!dryRun) {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, 9999);
+      ctx.fillStyle = '#2e9e6e';
+      ctx.fillRect(0, 0, W, banH);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `700 ${Math.min(fs + 1, 13)}px Sora, Arial`;
+      ctx.textBaseline = 'middle';
+      const nomMax = Math.floor(maxW / (fs * 0.58));
+      ctx.fillText(nom.length > nomMax ? nom.slice(0, nomMax - 2) + '..' : nom, PAD, banH / 2);
+      ctx.font = `400 ${labelFs}px Sora, Arial`;
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.textAlign = 'right';
+      ctx.fillText(d.label, W - PAD, banH / 2);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    }
+
+    let y = banH + fs + 2;
+
+    // ── PDF ──
+    if (PROD.format === 'pdf') {
+      txt(dateLabel + ' ' + dateStr, PAD, y, fs, '#1a2e25', true);
+      if (PROD.poidsNet) {
+        if (!dryRun) { ctx.font = `400 ${fs}px Sora, Arial`; }
+        const pw = dryRun ? 0 : ctx.measureText(PROD.poidsNet + ' g').width;
+        txt(PROD.poidsNet + ' g', W - PAD - pw, y, fs, '#555');
+      }
+      y += lineH;
+      txt('Lot : ' + PROD.lotRecette, PAD, y, fs, '#d07020'); y += lineH;
+      y += sep(y); y += 3;
+      txt('Ingrédients :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = drawIngSegs(ingSegments, PAD, y, maxW, fs, lineH, 99);
+      y += sep(y); y += 3;
+      txt('Valeurs nutritionnelles pour 100 g :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = nutriBloc(PAD, y, fs, maxW);
+      if (mentionsLive) { y += sep(y); y += 3; y = multiline(mentionsLive, PAD, y, maxW, fs - 1, lineH, '#555', 99); }
+
+    // ── 57×74 ──
+    } else if (PROD.format === 'zpl_57x74') {
+      txt(dateLabel + ' ' + dateStr, PAD, y, fs, '#1a2e25', true);
+      if (PROD.poidsNet) {
+        if (!dryRun) { ctx.font = `400 ${fs}px Sora, Arial`; }
+        const pw = dryRun ? 0 : ctx.measureText(PROD.poidsNet + ' g').width;
+        txt(PROD.poidsNet + ' g', W - PAD - pw, y, fs, '#555');
+      }
+      y += lineH;
+      txt('Lot : ' + PROD.lotRecette, PAD, y, fs, '#d07020'); y += lineH;
+      y += sep(y); y += 3;
+      txt('Ingrédients :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = drawIngSegs(ingSegments, PAD, y, maxW, fs, lineH, 99);
+      y += sep(y); y += 3;
+      txt('Valeurs pour 100 g :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = nutriBloc(PAD, y, fs, maxW);
+      if (mentionsLive) { y += sep(y); y += 2; y = multiline(mentionsLive, PAD, y, maxW, fs - 1, lineH, '#555', 99); }
+
+    // ── 50×50 ──
+    } else if (PROD.format === 'zpl_50x50') {
+      txt(dateLabel + ' ' + dateStr, PAD, y, fs, '#1a2e25', true);
+      if (PROD.poidsNet) {
+        if (!dryRun) { ctx.font = `400 ${fs}px Sora, Arial`; }
+        const pw = dryRun ? 0 : ctx.measureText(PROD.poidsNet + ' g').width;
+        txt(PROD.poidsNet + ' g', W - PAD - pw, y, fs, '#555');
+      }
+      y += lineH;
+      txt('Lot : ' + PROD.lotRecette, PAD, y, fs, '#d07020'); y += lineH;
+      y += sep(y); y += 2;
+      txt('Ingrédients :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = drawIngSegs(ingSegments, PAD, y, maxW, fs, lineH, 99);
+      y += sep(y); y += 2;
+      txt('Valeurs pour 100 g :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = nutriBloc(PAD, y, fs, maxW);
+      if (mentionsLive) { y += sep(y); y += 2; y = multiline(mentionsLive, PAD, y, maxW, fs - 1, lineH, '#555', 99); }
+
+    // ── 101×51 ──
+    } else if (PROD.format === 'zpl_101x51') {
+      txt(dateLabel + ' ' + dateStr, PAD, y, fs, '#1a2e25', true);
+      txt('Lot : ' + PROD.lotRecette, W / 2, y, fs, '#d07020'); y += lineH;
+      if (PROD.poidsNet) { txt('Poids : ' + PROD.poidsNet + ' g', PAD, y, fs, '#555'); y += lineH; }
+      y += sep(y); y += 2;
+      txt('Ingrédients :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = drawIngSegs(ingSegments, PAD, y, maxW, fs, lineH, 99);
+      y += sep(y); y += 2;
+      txt('Valeurs pour 100 g :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = nutriBlocCols(PAD, y, fs, Math.floor(maxW / 2));
+      if (mentionsLive) { y += sep(y); y += 2; y = multiline(mentionsLive, PAD, y, maxW, fs - 1, lineH, '#555', 99); }
+
+    // ── 100×150 ──
+    } else {
+      txt(dateLabel + ' ' + dateStr, PAD, y, fs, '#1a2e25', true);
+      if (PROD.poidsNet) {
+        if (!dryRun) { ctx.font = `400 ${fs}px Sora, Arial`; }
+        const pw = dryRun ? 0 : ctx.measureText(PROD.poidsNet + ' g').width;
+        txt(PROD.poidsNet + ' g', W - PAD - pw, y, fs, '#555');
+      }
+      y += lineH;
+      txt('Lot : ' + PROD.lotRecette, PAD, y, fs, '#d07020'); y += lineH;
+      y += sep(y); y += 3;
+      txt('Ingrédients :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = drawIngSegs(ingSegments, PAD, y, maxW, fs, lineH, 99);
+      y += sep(y); y += 3;
+      txt('Valeurs pour 100 g :', PAD, y, labelFs, '#999', true); y += labelFs + 2;
+      y = nutriBloc(PAD, y, fs, maxW);
+      if (mentionsLive) { y += sep(y); y += 3; y = multiline(mentionsLive, PAD, y, maxW, fs - 1, lineH, '#555', 99); }
+    }
+
+    return y + 8;
+  } // fin doRender
+
+  // ── Dimensionnement + rendu final ──
+  let fontSize = d.baseFontSize;
+
+  if (d.fixedH) {
+    while (fontSize > FONT_MIN) {
+      if (doRender(fontSize, true) <= d.h) break;
+      fontSize -= 0.5;
+    }
+    canvas.width  = W * SCALE;
+    canvas.height = d.h * SCALE;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = d.h + 'px';
+    ctx.scale(SCALE, SCALE);
+    doRender(fontSize, false);
+
+  } else {
+    const maxH = {
+      pdf:         1600,
+      zpl_57x74:   560,
+      zpl_50x50:   480,
+      zpl_101x51:  390,
+      zpl_100x150: 1100,
+    }[PROD.format] || 600;
+
+    while (fontSize > FONT_MIN) {
+      if (doRender(fontSize, true) <= maxH) break;
+      fontSize -= 0.5;
+    }
+
+    const H = Math.max(doRender(fontSize, true), 60);
+    canvas.width  = W * SCALE;
+    canvas.height = H * SCALE;
+    canvas.style.width  = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.scale(SCALE, SCALE);
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+    doRender(fontSize, false);
+  }
+
+  wrap.style.display = 'block';
+}
+// ── Téléchargement PNG ──
+function downloadLabelPng() {
+  const canvas = document.getElementById('prodLabelCanvas');
+  const nom = (document.getElementById('nom').value || 'etiquette').replace(/\s+/g,'-');
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = nom + '-' + PROD.lotRecette + '-' + PROD.format + '.png';
+  a.click();
+}
+
+// ── Téléchargement PDF ──
+function downloadLabelPdf() {
+  const canvas = document.getElementById('prodLabelCanvas');
+  const nom = document.getElementById('nom').value || 'Recette';
+  const imgData = canvas.toDataURL('image/png');
+
+  const dims = {
+    pdf:         { wmm: 210, hmm: 297 },
+    zpl_57x74:   { wmm: 57,  hmm: 74  },
+    zpl_50x50:   { wmm: 50,  hmm: 50  },
+    zpl_round60: { wmm: 60,  hmm: 60  },
+    zpl_101x51:  { wmm: 101, hmm: 51  },
+    zpl_100x150: { wmm: 100, hmm: 150 },
+  };
+  const d = dims[PROD.format] || dims['zpl_57x74'];
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>${escHtml(nom)}</title>
+<style>
+  @page { size: ${d.wmm}mm ${d.hmm}mm; margin: 0; }
+  body { margin: 0; padding: 0; }
+  img { width: ${d.wmm}mm; height: ${d.hmm}mm; display: block; }
+  .no-print { display: block; padding: 10px; text-align: center; }
+  @media print { .no-print { display: none; } }
+</style></head><body>
+<div class="no-print">
+  <button onclick="window.print()" style="background:#1f8c88;color:white;border:none;padding:8px 20px;border-radius:8px;font-size:14px;cursor:pointer">🖨️ Imprimer aux bonnes dimensions (${d.wmm}×${d.hmm}mm)</button>
+</div>
+<img src="${imgData}" alt="étiquette">
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); }
+  else toast('Autorisez les popups', 'error');
+}
+
+function buildRecap() {
+  const nom = document.getElementById('nom').value || 'Recette';
+  const dateStr = PROD.dateLimite ? new Date(PROD.dateLimite).toLocaleDateString('fr-FR') : '—';
+  const dateLabel = PROD.dateType === 'DLC' ? 'DLC' : 'DLUO';
+  const formatNames = {
+    pdf:'PDF Fiche de production', zpl_57x74:'Étiquette 57×74mm',
+    zpl_57x32:'Étiquette 57×32mm', zpl_round60:'Étiquette ronde 60mm',
+    zpl_101x51:'Étiquette 101×51mm', zpl_100x150:'Étiquette 100×150mm'
+  };
+
+  const poidsTotal = RECETTE.ingredients.reduce((acc, r) => acc + (parseFloat(r.poids) || 0), 0);
+  let lotsHtml = '';
+  const seen = new Set();
+
+  RECETTE.ingredients.forEach(row => {
+    const ing = ING.find(x => x.id == row.ingredient);
+    if (!ing || seen.has(ing.id)) return;
+    seen.add(ing.id);
+
+    const quidHtml = row.quid && poidsTotal > 0
+      ? ` <span style="font-size:10px;color:#e07c20;font-weight:700">(${(parseFloat(row.poids)/poidsTotal*100).toFixed(1)}%)</span>`
+      : '';
+
+    let subsHtml = '';
+    if (ing.type === 'compose') {
+      const subs = getSubsForIng(ing);
+      if (subs?.length) {
+        const subParts = subs.map(s => {
+          const sub = ING.find(x => x.id == s.ingredient);
+          if (!sub) return '?';
+          const hasAllergen = sub.allergenes && String(sub.allergenes).split(',').map(a => a.trim()).filter(Boolean).length > 0;
+          return hasAllergen
+            ? `<u><strong>${escHtml(sub.nom)}</strong></u>`
+            : escHtml(sub.nom);
+        });
+        subsHtml = `<div style="font-size:10px;color:var(--text3);margin-top:1px">(${subParts.join(', ')})</div>`;
+      }
+    }
+
+    const lot = PROD.lotsIng[ing.id] || '<span style="color:var(--text3)">—</span>';
+    lotsHtml += `
+      <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1">
+          <span style="font-weight:600">${escHtml(ing.nom)}</span>${quidHtml}
+          ${subsHtml}
+        </div>
+        <span style="color:var(--g3);font-weight:600;white-space:nowrap;padding-top:1px">${lot}</span>
+      </div>`;
+  });
+
+  document.getElementById('prodRecap').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:14px">
+      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Recette</span><br><strong>${escHtml(nom)}</strong></div>
+      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">N° de lot</span><br><strong style="color:#e07c20">${escHtml(PROD.lotRecette)}</strong></div>
+      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">${dateLabel}</span><br><strong>${dateStr}</strong></div>
+      ${PROD.poidsNet ? `<div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Poids net</span><br><strong>${escHtml(PROD.poidsNet)} g</strong></div>` : ''}
+      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Format</span><br><strong>${formatNames[PROD.format]}</strong></div>
+      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Nb étiquettes</span><br><strong>${document.getElementById('prodNbEtiquettes').value || 1}</strong></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px">Lots ingrédients</div>
+    ${lotsHtml || '<span style="color:var(--text3);font-size:12px">Aucun lot renseigné</span>'}
+    ${PROD.mentions ? `<div style="margin-top:12px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:10px"><strong>Mentions légales :</strong> ${escHtml(PROD.mentions)}</div>` : ''}
+  `;
+}
+async function prodExport() {
+  const btn = document.getElementById('btnProdExport');
+  btnLoading(btn, true);
+
+  if (PROD.format === 'pdf') {
+    await prodExportPdf();
+  } else {
+    prodExportZpl();
+  }
+  btnLoading(btn, false);
+}
+
+// ── Export PDF Production (généré côté client, ouvert pour impression) ──
+async function prodExportPdf() {
+  const nom = document.getElementById('nom').value || 'Recette';
+  const dateStr = PROD.dateLimite ? new Date(PROD.dateLimite).toLocaleDateString('fr-FR') : '—';
+  const dateLabel = PROD.dateType === 'DLC' ? "À consommer jusqu'au" : "À consommer de préférence avant le";
+  const dateBadgeColor = PROD.dateType === 'DLC' ? '#e05c5c' : '#f0a500';
+
+  // Calcul nutri complet
+  let nutri = { energie_kj:0, energie:0, proteines:0, glucides:0, sucres:0, lipides:0, ags:0, sel:0, fibres:0 };
+  let poidsTotal = 0, prixTotal = 0;
+  RECETTE.ingredients.forEach(row => {
+    const ing = ING.find(x=>x.id==row.ingredient); if(!ing) return;
+    const p = parseFloat(row.poids)||0; poidsTotal += p;
+    nutri.energie_kj += (parseFloat(ing.energie_kjoules)||0)*p/100;
+    nutri.energie    += (parseFloat(ing.energie_kcal)||0)*p/100;
+    nutri.proteines  += (parseFloat(ing.proteines_g)||0)*p/100;
+    nutri.glucides   += (parseFloat(ing.glucides_g)||0)*p/100;
+    nutri.sucres     += (parseFloat(ing.sucres_g)||0)*p/100;
+    nutri.lipides    += (parseFloat(ing.lipides_g)||0)*p/100;
+    nutri.ags        += (parseFloat(ing.Ags)||0)*p/100;
+    nutri.sel        += (parseFloat(ing.sel_g)||0)*p/100;
+    nutri.fibres     += (parseFloat(ing.fibres_g)||0)*p/100;
+    const prixKg = parseFloat(ing.prix_kg)||0;
+    if(prixKg>0){ const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; prixTotal+=(p/eq)*prixKg; }
+  });
+  const n100 = v => poidsTotal>0 ? (v/poidsTotal*100).toFixed(2) : '0.00';
+
+  // Étiquetage mode ingrédients
+  const etiquetageItems = computeEtiquetage();
+  const etiquetageHtml = etiquetageItems.map(e => {
+    let nomBase = escHtml(e.nom);
+    if (e.isCompose && !e.eclater && e.ingId) {
+      const ing = ING.find(x=>x.id==e.ingId);
+      const subs = ing ? getSubsForIng(ing) : null;
+      if (subs?.length) {
+        const subParts = subs.map(s => {
+          const sub = ING.find(x=>x.id==s.ingredient);
+          if (!sub) return '?';
+          const subAllergs = sub.allergenes ? String(sub.allergenes).split(',').map(a=>a.trim().toUpperCase()).filter(Boolean) : [];
+          return subAllergs.length
+            ? `<strong style="text-decoration:underline">${escHtml(sub.nom)}</strong>`
+            : escHtml(sub.nom);
+        });
+        nomBase += ` <span style="color:#8aaa99">(${subParts.join(', ')})</span>`;
+      }
+    }
+    const nomHtml = e.allergs.length
+      ? `<strong style="text-decoration:underline">${nomBase}</strong>`
+      : nomBase;
+    const pctHtml = e.quid
+      ? ` <span style="color:#e07c20;font-weight:700">(${e.pct}%)</span>`
+      : '';
+    return nomHtml + pctHtml;
+  }).join(', ') + '.';
+
+  const allAllergs = [...new Set(etiquetageItems.flatMap(e => e.allergs))].sort();
+
+  // Tableau composition avec lots
+  const poidsTotal2 = poidsTotal;
+  const compoRows = RECETTE.ingredients.map(row => {
+    const ing = ING.find(x=>x.id==row.ingredient); if(!ing) return '';
+    const p = parseFloat(row.poids)||0;
+    const allergs = ing.allergenes ? String(ing.allergenes).split(',').map(a=>a.trim().toUpperCase()).filter(Boolean) : [];
+    const lot = PROD.lotsIng[ing.id] || '—';
+    const quidStr = row.quid && poidsTotal2 > 0 ? ` <span style="color:#e07c20;font-weight:700">(${(p/poidsTotal2*100).toFixed(1)}%)</span>` : '';
+    const prixLigne = (() => { const pk=parseFloat(ing.prix_kg)||0; if(!pk) return '—'; const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; return (p/eq*pk).toFixed(2)+' €'; })();
+    return `<tr>
+      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;font-weight:600">${escHtml(ing.nom)}${quidStr}${allergs.length?` <span style="color:#f0a500;font-size:10px">[${allergs.join(', ')}]</span>`:''}</td>
+      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:right">${p} g</td>
+      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:right">${(p/poidsTotal*100).toFixed(1)}%</td>
+      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:center;font-weight:600;color:#1f8c88">${escHtml(lot)}</td>
+      <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:right;color:#4a6358">${prixLigne}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<title>Fiche Production — ${escHtml(nom)}</title>
+<style>
+  @page { size: A4; margin: 15mm 18mm; }
+  body { font-family: Arial, sans-serif; color: #1a2e25; font-size: 13px; }
+  @media print { .no-print { display:none; } body { margin:0; } }
+  h2 { font-size:22px; margin:0 0 4px; }
+  h3 { font-size:14px; color:#1f8c88; margin:18px 0 8px; border-bottom:2px solid #d6e8de; padding-bottom:4px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:8px; }
+  th { background:#e8f5f0; padding:7px 10px; text-align:left; border:1px solid #d6e8de; font-size:11px; text-transform:uppercase; letter-spacing:.5px; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 24px; margin-bottom:16px; }
+  .info-block { background:#f7faf8; border:1px solid #d6e8de; border-radius:8px; padding:10px 14px; }
+  .info-label { font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:#8aaa99; margin-bottom:2px; }
+  .info-value { font-size:15px; font-weight:700; color:#1a2e25; }
+  .btn-print { background:#1f8c88; color:white; border:none; padding:10px 24px; border-radius:8px; font-size:14px; cursor:pointer; margin-bottom:16px; }
+  .etiq-box { background:#f0f8f4; border:1.5px solid #d6e8de; border-radius:8px; padding:12px 16px; font-size:12px; line-height:1.9; }
+</style></head><body>
+
+<button class="btn-print no-print" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+
+<div style="border-bottom:3px solid #1f8c88;padding-bottom:14px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end">
+  <div>
+    <div style="font-size:10px;color:#2da882;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">🏭 FICHE DE PRODUCTION</div>
+    <h2>${escHtml(nom)}</h2>
+    <div style="font-size:12px;color:#8aaa99">Générée le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:10px;color:#8aaa99;margin-bottom:4px">EasyNutri — by JaySolution</div>
+    <span class="badge" style="background:${dateBadgeColor}22;color:${dateBadgeColor};border:1.5px solid ${dateBadgeColor}">${PROD.dateType}</span>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="info-block">
+    <div class="info-label">N° de lot de la recette</div>
+    <div class="info-value" style="color:#e07c20">${escHtml(PROD.lotRecette)}</div>
+  </div>
+  <div class="info-block">
+    <div class="info-label">${dateLabel}</div>
+    <div class="info-value" style="color:${dateBadgeColor}">${dateStr}</div>
+  </div>
+  ${PROD.poidsNet ? `<div class="info-block"><div class="info-label">Poids net du contenant</div><div class="info-value">${escHtml(PROD.poidsNet)} g</div></div>` : ''}
+  <div class="info-block">
+    <div class="info-label">Poids total recette</div>
+    <div class="info-value">${poidsTotal} g</div>
+  </div>
+</div>
+
+<h3>🏷️ Étiquetage ingrédients</h3>
+<div style="font-size:10px;color:#8aaa99;margin-bottom:6px;font-style:italic">Triés par ordre pondéral décroissant · Allergènes <u><strong>soulignés en gras</strong></u> · QUID en % si activé</div>
+<div class="etiq-box">
+  <span style="font-size:11px;font-weight:700;color:#8aaa99;text-transform:uppercase;letter-spacing:1px">INGRÉDIENTS : </span>${etiquetageHtml}
+</div>
+
+${allAllergs.length ? `<div style="background:#fff8e6;border:1.5px solid #f0a500;border-radius:8px;padding:10px 14px;margin:10px 0;font-size:11px"><strong style="color:#7a5000">⚠️ ALLERGÈNES :</strong> <span style="color:#7a5000;font-weight:700">${allAllergs.join(' — ')}</span></div>` : ''}
+
+<h3>Composition et numéros de lot</h3>
+<table>
+  <thead><tr>
+    <th>Ingrédient</th><th style="text-align:right">Poids</th>
+    <th style="text-align:right">%</th>
+    <th style="text-align:center">N° de lot</th>
+    <th style="text-align:right">Coût</th>
+  </tr></thead>
+  <tbody>${compoRows}</tbody>
+</table>
+
+${prixTotal>0 ? `<div style="background:#e8f5f0;border-radius:8px;padding:12px 16px;display:flex;gap:40px;margin-bottom:16px">
+  <div><div style="font-size:10px;color:#4a6358;text-transform:uppercase;letter-spacing:1px">Coût total</div><div style="font-size:20px;font-weight:700;color:#1f8c88">${prixTotal.toFixed(2)} €</div></div>
+  <div><div style="font-size:10px;color:#4a6358;text-transform:uppercase;letter-spacing:1px">Prix/kg</div><div style="font-size:20px;font-weight:700;color:#2da882">${(prixTotal/poidsTotal*1000).toFixed(2)} €</div></div>
+</div>` : ''}
+
+<h3>📊 Valeurs nutritionnelles pour 100g</h3>
+<table style="width:auto;min-width:380px">
+  <thead><tr><th>Nutriment</th><th style="text-align:right">Pour 100g</th></tr></thead>
+  <tbody>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de">Énergie</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right"><strong>${n100(nutri.energie_kj)} kJ</strong> / ${n100(nutri.energie)} kcal</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Matières grasses (Lipides)</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.lipides)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de;padding-left:20px">dont Acides gras saturés</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.ags)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Glucides</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.glucides)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de;padding-left:20px">dont Sucres</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.sucres)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Fibres alimentaires</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.fibres)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de">Protéines</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.proteines)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Sel</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.sel)} g</td></tr>
+  </tbody>
+</table>
+
+${PROD.mentions ? `<h3>Mentions légales</h3><div style="border:1.5px solid #d6e8de;border-radius:8px;padding:12px 16px;font-size:12px;line-height:1.7;background:#f7faf8">${escHtml(PROD.mentions)}</div>` : ''}
+
+<div style="margin-top:28px;border-top:2px solid #d6e8de;padding-top:16px;display:flex;justify-content:space-between;font-size:10px;color:#8aaa99">
+  <span>EasyNutri — by JaySolution</span>
+  <span>Fiche de production — ${escHtml(nom)} — Lot ${escHtml(PROD.lotRecette)}</span>
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+    toast('Fiche de production ouverte ✓ — utilisez Ctrl+P pour imprimer/PDF', 'success');
+  } else {
+    toast('Autorisez les popups pour ouvrir la fiche', 'error');
+  }
+  closeModal('modalProduction');
+}
+// ── Export ZPL ──
+function prodExportZpl() {
+  const zpl  = buildZpl();
+  const ip   = document.getElementById('prodPrinterIp').value.trim();
+  const port = document.getElementById('prodPrinterPort').value.trim() || '9100';
+
+  if (ip) {
+    toast('Envoi vers l\'imprimante…', 'success');
+    // Appel au proxy local qui fait le TCP raw
+    fetch('http://localhost:9200', {
+      method: 'POST',
+      body: zpl,
+      headers: { 'Content-Type': 'text/plain' }
+    })
+    .then(r => {
+      if (r.ok) {
+        toast('Imprimé ✓', 'success');
+        closeModal('modalProduction');
+      } else {
+        throw new Error('Proxy error ' + r.status);
+      }
+    })
+    .catch(() => {
+      toast('Proxy non joignable — fichier .zpl téléchargé', 'error');
+      downloadZpl(zpl);
+    });
+  } else {
+    downloadZpl(zpl);
+    toast('Fichier .zpl téléchargé', 'success');
+    closeModal('modalProduction');
+  }
+}
+function downloadZpl(zpl) {
+  const nom = (document.getElementById('nom').value || 'etiquette').replace(/\s+/g,'-');
+  const blob = new Blob([zpl], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nom + '-' + PROD.lotRecette + '.zpl';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Générateur ZPL selon format ──
+function buildZpl() {
+  const nom = document.getElementById('nom').value || 'Recette';
+  const dateStr = PROD.dateLimite ? new Date(PROD.dateLimite).toLocaleDateString('fr-FR') : '';
+  const dateLabel = PROD.dateType === 'DLC' ? 'DLC :' : 'DLUO :';
+
+  // Avec ^CI28 les accents passent nativement — zPad garde juste les caractères vraiment problématiques
+  const zPad = (s) => String(s).replace(/[^\x20-\x7E\u00C0-\u00FF]/g, '?');
+
+  const trunc = (s, max) => s.length > max ? s.slice(0, max - 2) + '..' : s;
+
+  // ── Calcul nutritionnel ──
+  let nutri = { energie:0, energie_kj:0, proteines:0, glucides:0, sucres:0, lipides:0, ags:0, sel:0, fibres:0 };
+  let poidsTotal = 0;
+  RECETTE.ingredients.forEach(row => {
+    const ing = ING.find(x => x.id == row.ingredient); if (!ing) return;
+    const p = parseFloat(row.poids) || 0; poidsTotal += p;
+    nutri.energie_kj += (parseFloat(ing.energie_kjoules)||0)*p/100;
+    nutri.energie    += (parseFloat(ing.energie_kcal)||0)*p/100;
+    nutri.proteines  += (parseFloat(ing.proteines_g)||0)*p/100;
+    nutri.glucides   += (parseFloat(ing.glucides_g)||0)*p/100;
+    nutri.sucres     += (parseFloat(ing.sucres_g)||0)*p/100;
+    nutri.lipides    += (parseFloat(ing.lipides_g)||0)*p/100;
+    nutri.ags        += (parseFloat(ing.Ags)||0)*p/100;
+    nutri.sel        += (parseFloat(ing.sel_g)||0)*p/100;
+    nutri.fibres     += (parseFloat(ing.fibres_g)||0)*p/100;
+  });
+  const n100 = v => { const r = poidsTotal > 0 ? v/poidsTotal*100 : 0; return isNaN(r) ? '0.0' : r.toFixed(1); };
+
+  // ── Segments ingrédients avec marquage allergènes ──
+  const etiqItems = computeEtiquetage();
+  const ingSegs = [];
+  etiqItems.forEach((e, idx) => {
+    if (idx > 0) ingSegs.push({ text: ', ', allergen: false });
+    const isAllergen = e.allergs && e.allergs.length > 0;
+    if (e.isCompose && !e.eclater && e.ingId) {
+      const ing = ING.find(x => x.id == e.ingId);
+      const subs = ing ? getSubsForIng(ing) : null;
+      if (subs?.length) {
+        ingSegs.push({ text: e.nom + (e.quid ? ' '+e.pct+'%' : ''), allergen: isAllergen });
+        ingSegs.push({ text: ' (', allergen: false });
+        subs.forEach((sub, si) => {
+          const subIng = ING.find(x => x.id == sub.ingredient);
+          if (!subIng) return;
+          if (si > 0) ingSegs.push({ text: ', ', allergen: false });
+          const subIsAllergen = subIng.allergenes &&
+            String(subIng.allergenes).split(',').map(a=>a.trim()).filter(Boolean).length > 0;
+          ingSegs.push({ text: subIng.nom, allergen: subIsAllergen });
+        });
+        ingSegs.push({ text: ')', allergen: false });
+        return;
+      }
+    }
+    ingSegs.push({ text: e.nom + (e.quid ? ' '+e.pct+'%' : ''), allergen: isAllergen });
+  });
+
+  // ── buildIngLines ──
+  // Une ligne ZPL par ligne de texte
+  // Groupes contigus de même statut allergène → un ^FO par groupe
+  // Souligné allergène = ^GB 2px sous le texte (pas ^FU)
+  const buildIngLines = (x, y, fs, maxPx, maxLines) => {
+    const gap = fs + 5;
+    const charW = Math.round(fs * 0.55);
+    const maxChars = Math.floor(maxPx / charW);
+    const out = [];
+
+    // Tokeniser en mots
+    const tokens = [];
+    ingSegs.forEach(seg => {
+      seg.text.split(/(\s+)/).forEach(w => {
+        if (w !== '') tokens.push({ text: w, allergen: seg.allergen });
+      });
+    });
+
+    // Regrouper en lignes
+    const textLines = [];
+    let curLine = [], curLen = 0;
+    for (let i = 0; i < tokens.length; i++) {
+      const tok = tokens[i];
+      if (curLen + tok.text.length > maxChars && curLen > 0) {
+        textLines.push(curLine);
+        curLine = []; curLen = 0;
+        if (textLines.length >= maxLines) {
+          textLines[maxLines - 1].push({ text: '...', allergen: false });
+          break;
+        }
+      }
+      curLine.push(tok);
+      curLen += tok.text.length;
+    }
+    if (curLine.length && textLines.length < maxLines) textLines.push(curLine);
+
+    // Émettre chaque ligne
+    for (const lineTokens of textLines) {
+      // Fusionner tokens contigus de même statut
+      const groups = [];
+      for (const tok of lineTokens) {
+        const last = groups[groups.length - 1];
+        if (last && last.allergen === tok.allergen) {
+          last.text += tok.text;
+        } else {
+          groups.push({ text: tok.text, allergen: tok.allergen });
+        }
+      }
+
+      let curX = x;
+      for (const grp of groups) {
+        const t = zPad(grp.text);
+        if (!t) continue;
+        const tw = Math.round(t.length * charW);
+        out.push(`^FO${curX},${y}^A0N,${fs},${fs}^FD${t}^FS`);
+        // Souligné allergène via ^GB positionné sous le texte
+        if (grp.allergen && t.trim()) {
+          out.push(`^FO${curX},${y + fs + 1}^GB${tw},2,2^FS`);
+        }
+        curX += tw;
+      }
+      y += gap;
+    }
+
+    return { lines: out, y };
+  };
+
+  // ── Bloc nutri — libellés réglementaires complets ──
+  const nutriBloc = (x, y, fs) => {
+    const gap = fs + 5;
+    const out = [];
+    const L  = (t) => { out.push(`^FO${x},${y}^A0N,${fs},${fs}^FD${zPad(t)}^FS`);      y += gap; };
+    const Li = (t) => { out.push(`^FO${x+18},${y}^A0N,${fs},${fs}^FD${zPad(t)}^FS`);   y += gap; };
+    L(`Énergie : ${n100(nutri.energie)} kcal / ${n100(nutri.energie_kj)} kJ`);
+    L(`Matières grasses : ${n100(nutri.lipides)} g`);
+    Li(`dont acides gras saturés : ${n100(nutri.ags)} g`);
+    L(`Glucides : ${n100(nutri.glucides)} g`);
+    Li(`dont sucres : ${n100(nutri.sucres)} g`);
+    L(`Fibres alimentaires : ${n100(nutri.fibres)} g`);
+    L(`Protéines : ${n100(nutri.proteines)} g`);
+    L(`Sel : ${n100(nutri.sel)} g`);
+    return { lines: out, y };
+  };
+
+  // ── Bloc nutri 2 colonnes ──
+  const nutriBlocCols = (x, y, fs, col2x) => {
+    const gap = fs + 5;
+    const out = [];
+    out.push(`^FO${x},${y}^A0N,${fs},${fs}^FDÉnergie : ${n100(nutri.energie)} kcal^FS`);
+    out.push(`^FO${col2x},${y}^A0N,${fs},${fs}^FDProtéines : ${n100(nutri.proteines)} g^FS`); y += gap;
+    out.push(`^FO${x},${y}^A0N,${fs},${fs}^FDsoit ${n100(nutri.energie_kj)} kJ^FS`);
+    out.push(`^FO${col2x},${y}^A0N,${fs},${fs}^FDSel : ${n100(nutri.sel)} g^FS`); y += gap;
+    out.push(`^FO${x},${y}^A0N,${fs},${fs}^FDMat. grasses : ${n100(nutri.lipides)} g^FS`);
+    out.push(`^FO${col2x},${y}^A0N,${fs},${fs}^FDFibres : ${n100(nutri.fibres)} g^FS`); y += gap;
+    out.push(`^FO${x},${y}^A0N,${fs},${fs}^FDdont AGS : ${n100(nutri.ags)} g^FS`); y += gap;
+    out.push(`^FO${x},${y}^A0N,${fs},${fs}^FDGlucides : ${n100(nutri.glucides)} g^FS`); y += gap;
+    out.push(`^FO${x},${y}^A0N,${fs},${fs}^FDdont sucres : ${n100(nutri.sucres)} g^FS`); y += gap;
+    return { lines: out, y };
+  };
+
+  // ── Dimensions PW par format (dots à 203 dpi) ──
+  const PW_map = {
+    zpl_57x74:   456,
+    zpl_50x50:   400,
+    zpl_round60: 479,
+    zpl_101x51:  812,
+    zpl_100x150: 800,
+  };
+  const PW = PW_map[PROD.format] || 456;
+  const PAD = 10;
+  const innerW = PW - PAD * 2;
+
+  const gbSep = (y, ep = 1) => `^FO${PAD},${y}^GB${innerW},${ep},${ep}^FS`;
+
+  // Header ZPL — ^CI28 pour UTF-8, ^SZ2 pour ZPL2, pas de ^LL (Godex utilise sa config firmware)
+  const header = () => `^XA\n^CI28\n^SZ2\n^PW${PW}\n^LS0\n^LH0,0\n`;
+
+  let zpl = '';
+
+  // ════════════════════════════════════════════
+  // 57×74mm
+  // ════════════════════════════════════════════
+  if (PROD.format === 'zpl_57x74') {
+    const fs = 22; const fsS = 19; const fsXS = 17;
+    let y = 14;
+    const L = [];
+
+    L.push(`^FO${PAD},${y}^A0N,${fs+6},${fs+6}^FD${zPad(trunc(nom,22))}^FS`); y += fs+12;
+    if (PROD.poidsNet) { L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FDPoids net : ${PROD.poidsNet} g^FS`); y += fsS+6; }
+    L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FD${dateLabel} ${dateStr}^FS`); y += fsS+6;
+    L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FDLot : ${zPad(PROD.lotRecette)}^FS`); y += fsS+6;
+    L.push(gbSep(y, 2)); y += 10;
+
+    L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FDINGRÉDIENTS :^FS`); y += fsXS+5;
+    const ri = buildIngLines(PAD, y, fsXS, innerW, 99);
+    ri.lines.forEach(l => L.push(l)); y = ri.y;
+
+    L.push(gbSep(y)); y += 8;
+    L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FDValeurs pour 100 g :^FS`); y += fsXS+5;
+    const nb = nutriBloc(PAD, y, fsXS);
+    nb.lines.forEach(l => L.push(l)); y = nb.y;
+
+    if (PROD.mentions) {
+      L.push(gbSep(y)); y += 7;
+      L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FB${innerW},4,,^FD${zPad(PROD.mentions)}^FS`);
+      y += (fsXS+5)*4;
+    }
+
+    zpl = header() + L.join('\n') + '\n^XZ';
+
+  // ════════════════════════════════════════════
+  // 50×50mm
+  // ════════════════════════════════════════════
+  } else if (PROD.format === 'zpl_50x50') {
+    const fs = 20; const fsS = 17; const fsXS = 15;
+    let y = 12;
+    const L = [];
+
+    L.push(`^FO${PAD},${y}^A0N,${fs+4},${fs+4}^FD${zPad(trunc(nom,20))}^FS`); y += fs+10;
+    L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FD${dateLabel} ${dateStr}^FS`); y += fsS+5;
+    L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FDLot : ${zPad(PROD.lotRecette)}^FS`); y += fsS+5;
+    if (PROD.poidsNet) { L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FDPoids : ${PROD.poidsNet} g^FS`); y += fsS+5; }
+    L.push(gbSep(y)); y += 8;
+
+    L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FDINGRÉDIENTS :^FS`); y += fsXS+5;
+    const ri = buildIngLines(PAD, y, fsXS, innerW, 99);
+    ri.lines.forEach(l => L.push(l)); y = ri.y;
+
+    L.push(gbSep(y)); y += 8;
+    L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FDValeurs pour 100 g :^FS`); y += fsXS+5;
+    const nb = nutriBloc(PAD, y, fsXS);
+    nb.lines.forEach(l => L.push(l)); y = nb.y;
+
+    if (PROD.mentions) {
+      L.push(gbSep(y)); y += 6;
+      L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FB${innerW},3,,^FD${zPad(PROD.mentions)}^FS`);
+      y += (fsXS+5)*3;
+    }
+
+    zpl = header() + L.join('\n') + '\n^XZ';
+
+  // ════════════════════════════════════════════
+  // Ronde 60mm
+  // ════════════════════════════════════════════
+  } else if (PROD.format === 'zpl_round60') {
+    const fs = 20; const fsS = 18; const fsXS = 16;
+    const pad = 35;
+    const iW = PW - pad * 2;
+    let y = 18;
+    const L = [];
+
+    L.push(`^FO${pad},${y}^A0N,${fs+2},${fs+2}^FD${zPad(trunc(nom,20))}^FS`); y += fs+10;
+    L.push(`^FO${pad},${y}^A0N,${fsS},${fsS}^FD${dateLabel} ${dateStr}${PROD.poidsNet ? '  '+PROD.poidsNet+' g' : ''}^FS`); y += fsS+6;
+    L.push(`^FO${pad},${y}^A0N,${fsS},${fsS}^FDLot : ${zPad(PROD.lotRecette)}^FS`); y += fsS+6;
+    L.push(`^FO${pad},${y}^GB${iW},1,1^FS`); y += 8;
+
+    L.push(`^FO${pad},${y}^A0N,${fsXS},${fsXS}^FDINGRÉDIENTS :^FS`); y += fsXS+5;
+    const ri = buildIngLines(pad, y, fsXS, iW, 99);
+    ri.lines.forEach(l => L.push(l)); y = ri.y;
+
+    L.push(`^FO${pad},${y}^GB${iW},1,1^FS`); y += 8;
+    L.push(`^FO${pad},${y}^A0N,${fsXS},${fsXS}^FDValeurs pour 100 g :^FS`); y += fsXS+5;
+    const nb = nutriBloc(pad, y, fsXS);
+    nb.lines.forEach(l => L.push(l)); y = nb.y;
+
+    if (PROD.mentions) {
+      L.push(`^FO${pad},${y}^GB${iW},1,1^FS`); y += 6;
+      L.push(`^FO${pad},${y}^A0N,${fsXS},${fsXS}^FB${iW},2,,^FD${zPad(PROD.mentions)}^FS`);
+      y += (fsXS+5)*2;
+    }
+
+    zpl = header() + L.join('\n') + '\n^XZ';
+
+  // ════════════════════════════════════════════
+  // 101×51mm
+  // ════════════════════════════════════════════
+  } else if (PROD.format === 'zpl_101x51') {
+    const fs = 24; const fsS = 20; const fsXS = 18;
+    const col2 = Math.floor(PW / 2) + 10;
+    let y = 12;
+    const L = [];
+
+    L.push(`^FO${PAD},${y}^A0N,${fs+8},${fs+8}^FD${zPad(trunc(nom,30))}^FS`); y += fs+14;
+    L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FD${dateLabel} ${dateStr}^FS`);
+    L.push(`^FO${col2},${y}^A0N,${fsS},${fsS}^FDLot : ${zPad(PROD.lotRecette)}^FS`); y += fsS+6;
+    if (PROD.poidsNet) { L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FDPoids : ${PROD.poidsNet} g^FS`); y += fsS+6; }
+    L.push(gbSep(y)); y += 8;
+
+    L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FDINGRÉDIENTS :^FS`); y += fsXS+5;
+    const ri = buildIngLines(PAD, y, fsXS, innerW, 99);
+    ri.lines.forEach(l => L.push(l)); y = ri.y;
+
+    L.push(gbSep(y)); y += 8;
+    L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FDValeurs pour 100 g :^FS`); y += fsXS+5;
+    const nb = nutriBlocCols(PAD, y, fsXS, col2);
+    nb.lines.forEach(l => L.push(l)); y = nb.y;
+
+    if (PROD.mentions) {
+      L.push(gbSep(y)); y += 6;
+      L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FB${innerW},2,,^FD${zPad(PROD.mentions)}^FS`);
+      y += (fsXS+5)*2;
+    }
+
+    zpl = header() + L.join('\n') + '\n^XZ';
+
+  // ════════════════════════════════════════════
+  // 100×150mm
+  // ════════════════════════════════════════════
+  } else {
+    const fs = 26; const fsS = 22; const fsXS = 20;
+    let y = 18;
+    const L = [];
+
+    L.push(`^FO${PAD},${y}^A0N,${fs+10},${fs+10}^FD${zPad(trunc(nom,24))}^FS`); y += fs+16;
+    L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FD${dateLabel} ${dateStr}^FS`); y += fsS+6;
+    L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FDLot : ${zPad(PROD.lotRecette)}^FS`); y += fsS+6;
+    if (PROD.poidsNet) { L.push(`^FO${PAD},${y}^A0N,${fsS},${fsS}^FDPoids net : ${PROD.poidsNet} g^FS`); y += fsS+6; }
+    L.push(gbSep(y, 2)); y += 12;
+
+    L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FDINGRÉDIENTS :^FS`); y += fsXS+5;
+    const ri = buildIngLines(PAD, y, fsXS, innerW, 99);
+    ri.lines.forEach(l => L.push(l)); y = ri.y;
+
+    L.push(gbSep(y)); y += 10;
+    L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FDValeurs nutritionnelles pour 100 g :^FS`); y += fsXS+5;
+    const nb = nutriBloc(PAD, y, fsXS);
+    nb.lines.forEach(l => L.push(l)); y = nb.y;
+
+    if (PROD.mentions) {
+      L.push(gbSep(y)); y += 8;
+      L.push(`^FO${PAD},${y}^A0N,${fsXS},${fsXS}^FB${innerW},5,,^FD${zPad(PROD.mentions)}^FS`);
+      y += (fsXS+5)*5;
+    }
+
+    zpl = header() + L.join('\n') + '\n^XZ';
+  }
+
+  // Copies multiples
+  const nbCopies = parseInt(document.getElementById('prodNbEtiquettes').value) || 1;
+  if (nbCopies > 1) zpl = Array(nbCopies).fill(zpl).join('\n');
+
+  return zpl;
+}
+function renderZplPreview() {
+  const zpl = buildZpl();
+  const el = document.getElementById('prodZplPreview');
+  if (el) el.textContent = zpl.slice(0, 500) + (zpl.length > 500 ? '\n…' : '');
+}
+
 
 // ── MODAL HELPERS ──
 function openModal(id) {
@@ -1799,8 +3182,10 @@ function toast(msg, type='success') {
 
 // ── UTILS ──
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function fmtNum(n) { return n != null ? parseFloat(n).toFixed(1) : '—'; }
-function sanitizeDecimal(input) { let v=input.value.replace(/\./g,',').replace(/[^0-9,]/g,''); const parts=v.split(','); if(parts.length>2) v=parts[0]+','+parts.slice(1).join(''); input.value=v; }
+function fmtNum(n) { 
+  const v = parseFloat(n); 
+  return (!isNaN(v)) ? v.toFixed(1) : '0.0'; 
+}function sanitizeDecimal(input) { let v=input.value.replace(/\./g,',').replace(/[^0-9,]/g,''); const parts=v.split(','); if(parts.length>2) v=parts[0]+','+parts.slice(1).join(''); input.value=v; }
 function parseDecimalFr(str) { if(!str && str!==0) return 0; return parseFloat(String(str).replace(',','.')) || 0; }
 
 // ── LOGIN ──
@@ -1827,10 +3212,9 @@ async function doLogin() {
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('userLabel').textContent = email;
     document.getElementById('userLabel').style.display = 'inline';
-    const displayName = data.nom || email.split('@')[0].split('.')[0];
-    localStorage.setItem('easynutri_nom', displayName);
+    const firstName = email.split('@')[0].split('.')[0];
     const greet = document.getElementById('homeGreeting');
-    if (greet) greet.textContent = 'Bonjour ' + displayName + ' 👋';
+    if (greet) greet.textContent = 'Bonjour ' + firstName.charAt(0).toUpperCase() + firstName.slice(1) + ' 👋';
     document.getElementById('btnLogout').style.display = 'inline-flex';
     init();
   } catch(e) {
@@ -1846,7 +3230,181 @@ function logout() {
   localStorage.removeItem('easynutri_user');
   location.reload();
 }
+// ════════════════════════════════════════════
+//  IMPORT OPEN FOOD FACTS
+// ════════════════════════════════════════════
 
+const OFF_ALLERGEN_MAP = {
+  'en:gluten':      'GLUTEN',
+  'en:crustaceans': 'CRUSTACES',
+  'en:eggs':        'OEUFS',
+  'en:fish':        'POISSONS',
+  'en:peanuts':     'ARACHIDES',
+  'en:soybeans':    'SOJA',
+  'en:milk':        'LAIT',
+  'en:nuts':        'FRUITS_A_COQUES',
+  'en:celery':      'CELERI',
+  'en:mustard':     'MOUTARDE',
+  'en:sesame':      'SESAME',
+  'en:sulphites':   'SULFITES',
+  'en:lupin':       'LUPIN',
+  'en:molluscs':    'MOLLUSQUES',
+};
+
+let _offDebounce = null;
+let _offResults  = [];
+
+function openImportOFFModal() {
+  document.getElementById('offSearchInput').value = '';
+  document.getElementById('offResults').innerHTML =
+    '<div style="text-align:center;color:var(--text3);padding:40px 0;font-size:13px">Tape au moins 2 caractères pour rechercher</div>';
+  _offResults = [];
+  openModal('modalImportOFF');
+  setTimeout(() => document.getElementById('offSearchInput').focus(), 200);
+}
+
+function onOFFInput() {
+  clearTimeout(_offDebounce);
+  _offDebounce = setTimeout(searchOFF, 500);
+}
+
+async function searchOFF() {
+  const q = document.getElementById('offSearchInput').value.trim();
+  const container = document.getElementById('offResults');
+  if (q.length < 2) return;
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px;gap:12px">
+      <div class="skel-spinner"></div>
+      <div class="skel-spinner-label">Recherche en cours…</div>
+    </div>`;
+
+try {
+const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=6&lc=fr&fields=product_name,nutriments,allergens_tags`;
+const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+const data = await res.json();
+const products = (data.products || []).filter(p => p.product_name?.trim());
+_offResults = products;
+    if (!products.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:36px;font-size:13px">Aucun résultat — essaie un terme plus général.</div>';
+      return;
+    }
+    renderOFFResults(products);
+  } catch(e) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:36px">
+        <div style="font-size:28px;margin-bottom:10px">📡</div>
+        <div style="color:var(--danger);font-size:13px;margin-bottom:8px">Open Food Facts inaccessible</div>
+        <div style="color:var(--text3);font-size:11.5px">Vérifie ta connexion ou réessaie dans quelques secondes</div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:14px" onclick="searchOFF()">↻ Réessayer</button>
+      </div>`;
+  }
+}
+async function searchCIQUAL(q) {
+  const container = document.getElementById('offResults');
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px;gap:12px">
+      <div class="skel-spinner"></div>
+      <div class="skel-spinner-label">Nouvelle tentative…</div>
+    </div>`;
+
+  try {
+    // 2ème tentative avec l'ancienne API OFF (plus compatible)
+    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=10&lc=fr&fields=product_name,nutriments,allergens_tags`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const products = (data.products || []).filter(p => p.product_name?.trim());
+    _offResults = products;
+    if (!products.length) {
+      container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:36px;font-size:13px">Aucun résultat — essaie un terme plus général.</div>';
+      return;
+    }
+    renderOFFResults(products);
+  } catch(e) {
+    container.innerHTML = `
+      <div style="text-align:center;padding:36px">
+        <div style="font-size:28px;margin-bottom:10px">📡</div>
+        <div style="color:var(--danger);font-size:13px;margin-bottom:8px">Open Food Facts inaccessible</div>
+        <div style="color:var(--text3);font-size:11.5px">Vérifie ta connexion ou réessaie dans quelques secondes</div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:14px" onclick="searchOFF()">↻ Réessayer</button>
+      </div>`;
+  }
+}
+
+function renderOFFResults(products, isCiqual = false) {
+  const container = document.getElementById('offResults');
+  container.innerHTML = isCiqual
+    ? `<div style="padding:6px 18px;font-size:10px;color:var(--text3);background:#f7faf8;border-bottom:1px solid var(--border)">📋 Résultats CIQUAL (table nutritionnelle française officielle)</div>`
+    : '';
+
+  container.innerHTML += products.map((p, i) => {
+    const n    = p.nutriments || {};
+    const kcal = n['energy-kcal_100g'] != null ? Math.round(n['energy-kcal_100g']) : null;
+    const prot = n['proteins_100g']      != null ? n['proteins_100g'].toFixed(1)    : null;
+    const lip  = n['fat_100g']           != null ? n['fat_100g'].toFixed(1)         : null;
+    const gluc = n['carbohydrates_100g'] != null ? n['carbohydrates_100g'].toFixed(1): null;
+    const allergenCodes = (p.allergens_tags || []).map(t => OFF_ALLERGEN_MAP[t]).filter(Boolean);
+    const macroStr = [
+      kcal != null ? kcal + ' kcal' : null,
+      prot != null ? 'P ' + prot + 'g' : null,
+      lip  != null ? 'L ' + lip  + 'g' : null,
+      gluc != null ? 'G ' + gluc + 'g' : null,
+    ].filter(Boolean).join(' · ');
+
+    return `
+      <div onclick="importOFFItem(${i})"
+           style="padding:11px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.12s"
+           onmouseenter="this.style.background='var(--surface2)'"
+           onmouseleave="this.style.background=''">
+        <div style="font-weight:600;font-size:13.5px;color:var(--text);margin-bottom:3px">${escHtml(p.product_name)}</div>
+        <div style="font-size:11.5px;color:var(--text3);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span>${macroStr || 'Valeurs non disponibles'}</span>
+          ${allergenCodes.length ? `<span style="background:#fff8e6;color:#9a6500;border:1px solid #f0c040;border-radius:4px;padding:1px 7px;font-size:10.5px;font-weight:600">⚠️ ${allergenCodes.join(', ')}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function importOFFItem(idx) {
+  const p = _offResults[idx];
+  if (!p) return;
+  const n = p.nutriments || {};
+  const v = (key, round = false) => {
+    const val = n[key];
+    if (val == null) return '';
+    return round ? String(Math.round(val)) : val.toFixed(2);
+  };
+  document.getElementById('ingNom').value       = p.product_name || '';
+  document.getElementById('ingEnergie').value   = v('energy-kcal_100g', true) || (n['energy_100g'] != null ? String(Math.round(n['energy_100g'] / 4.184)) : '');
+  document.getElementById('ingKjoules').value   = v('energy_100g', true);
+  document.getElementById('ingProteines').value = v('proteins_100g');
+  document.getElementById('ingGlucides').value  = v('carbohydrates_100g');
+  document.getElementById('ingSucres').value    = v('sugars_100g');
+  document.getElementById('ingLipides').value   = v('fat_100g');
+  document.getElementById('ingAgs').value       = v('saturated-fat_100g');
+  document.getElementById('ingSel').value       = v('salt_100g');
+  document.getElementById('ingFibres').value    = v('fiber_100g');
+  setType('simple');
+  const allergenTags = p.allergens_tags || [];
+  document.querySelectorAll('#allergenesCheckboxes input[type=checkbox]').forEach(cb => {
+    cb.checked = false;
+    const label = cb.closest('.allerg-chip');
+    if (label) { label.classList.remove('checked'); label.querySelector('.check-box').textContent = ''; }
+  });
+  allergenTags.forEach(tag => {
+    const mapped = OFF_ALLERGEN_MAP[tag];
+    if (!mapped) return;
+    document.querySelectorAll('#allergenesCheckboxes input[type=checkbox]').forEach(cb => {
+      if (cb.value.toUpperCase() === mapped.toUpperCase()) {
+        cb.checked = true;
+        const label = cb.closest('.allerg-chip');
+        if (label) { label.classList.add('checked'); label.querySelector('.check-box').textContent = '✓'; }
+      }
+    });
+  });
+  closeModal('modalImportOFF');
+  toast('Ingrédient importé ✓', 'success');
+}
 // ── DÉMARRAGE ──
 (function() {
   const savedApi  = localStorage.getItem('easynutri_api');
@@ -1858,14 +3416,29 @@ function logout() {
       document.getElementById('userLabel').textContent = savedUser;
       document.getElementById('userLabel').style.display = 'inline';
     }
-    const savedNom = localStorage.getItem('easynutri_nom');
-    const greet = document.getElementById('homeGreeting');
-    if (greet && savedNom) greet.textContent = 'Bonjour ' + savedNom + ' 👋';
     document.getElementById('btnLogout').style.display = 'inline-flex';
     init();
   }
 })();
 </script>
+<!-- MODAL IMPORT OPEN FOOD FACTS -->
+<div class="modal-overlay" id="modalImportOFF">
+  <div class="modal" style="max-width:560px;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="padding:20px 22px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-family:'DM Serif Display',serif;font-size:20px">🔍 Rechercher un ingrédient</div>
+        <button onclick="closeModal('modalImportOFF')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3)">✕</button>
+      </div>
+      <input id="offSearchInput" class="form-input" type="text"
+             placeholder="Ex: farine de blé, lait entier, tomate…"
+             oninput="onOFFInput()" autocomplete="off">
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">Source : Open Food Facts (CC BY-SA) · 3M+ produits · Valeurs pour 100g</div>
+    </div>
+    <div id="offResults" style="overflow-y:auto;flex:1;padding:6px 0">
+      <div style="text-align:center;color:var(--text3);padding:40px 0;font-size:13px">Tape au moins 2 caractères pour rechercher</div>
+    </div>
+  </div>
+</div>
 <!-- PWA BANNER -->
 <div id="pwaBanner">
   <img class="pwa-logo" src="https://raw.githubusercontent.com/JaySolution/EasyNutri/main/enlog.png" alt="EasyNutri" onerror="this.style.display='none'">
@@ -2070,8 +3643,158 @@ if ('serviceWorker' in navigator) {
 })();
 </script>
 
+<!-- ════════════════════════════════════════
+     MODAL PRODUCTION
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalProduction">
+  <div class="modal" style="max-width:680px;max-height:94vh;overflow-y:auto">
+
+    <!-- Stepper header -->
+    <div class="prod-stepper">
+      <div class="prod-step active" id="step-ind-1"><span class="prod-step-num">1</span><span class="prod-step-lbl">Lots</span></div>
+      <div class="prod-step-line"></div>
+      <div class="prod-step" id="step-ind-2"><span class="prod-step-num">2</span><span class="prod-step-lbl">Étiquette</span></div>
+      <div class="prod-step-line"></div>
+      <div class="prod-step" id="step-ind-3"><span class="prod-step-num">3</span><span class="prod-step-lbl">Export</span></div>
+    </div>
+
+    <!-- STEP 1 : LOTS + infos production -->
+    <div id="prodStep1">
+      <div class="modal-title" style="margin-top:8px">🏭 Lancement de production</div>
+      <div id="prodRecetteName" style="font-size:13px;color:var(--text3);margin:-10px 0 18px;font-weight:500"></div>
+
+      <!-- Lot recette + date -->
+<div class="form-group">
+        <label class="form-label">N° de lot de la recette *</label>
+        <input class="form-input" id="prodLotRecette" placeholder="Ex: LOT-2025-001">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Poids net du contenant (g)</label>
+          <input class="form-input" id="prodPoidsNet" type="text" inputmode="decimal" placeholder="Ex: 250">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre d'étiquettes</label>
+          <input class="form-input" id="prodNbEtiquettes" type="number" min="1" value="1" placeholder="1">
+        </div>
+      </div>
+      <!-- DLC / DLUO toggle -->
+      <div class="form-group">
+        <label class="form-label">Type de date limite</label>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <div class="type-chip active" id="prodTypeDLC"  onclick="setProdDateType('DLC')">🔴 DLC</div>
+          <div class="type-chip"        id="prodTypeDLUO" onclick="setProdDateType('DLUO')">🟡 DLUO</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+          <span id="prodDateLabel" style="font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap">À consommer jusqu'au</span>
+          <input class="form-input" id="prodDateLimite" type="date" style="flex:1">
+        </div>
+      </div>
+
+      <!-- Mentions légales -->
+      <div class="form-group">
+        <label class="form-label">Mentions légales personnalisées <span style="font-weight:400;color:var(--text3)">(facultatif)</span></label>
+        <textarea class="form-input" id="prodMentions" rows="3" placeholder="Ex: Fabriqué dans un atelier utilisant des fruits à coque. Conserver entre 0°C et +4°C. Consommer dans les 3 jours après ouverture." style="resize:vertical;min-height:72px"></textarea>
+      </div>
+
+      <!-- Lots par ingrédient -->
+      <div class="form-group">
+        <label class="form-label">N° de lot par ingrédient</label>
+        <div id="prodLotsIngredients" style="display:flex;flex-direction:column;gap:8px;margin-top:6px"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modalProduction')">Annuler</button>
+        <button class="btn btn-primary" onclick="prodGoStep(2)" style="background:linear-gradient(135deg,#f0a500,#e07c20);box-shadow:0 4px 14px rgba(240,165,0,0.25)">Suivant →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2 : FORMAT ÉTIQUETTE -->
+    <div id="prodStep2" style="display:none">
+      <div class="modal-title" style="margin-top:8px">🏷️ Format d'étiquette</div>
+
+      <div class="prod-label-grid" id="prodLabelGrid">
+        <div class="prod-label-card active" onclick="selectLabelFormat(this,'pdf')" data-format="pdf">
+          <div class="prod-label-icon">📄</div>
+          <div class="prod-label-name">PDF Fiche de prod.</div>
+          <div class="prod-label-dim">Fiche technique complète</div>
+        </div>
+        <div class="prod-label-card" onclick="selectLabelFormat(this,'zpl_57x74')" data-format="zpl_57x74">
+          <div class="prod-label-icon">🏷️</div>
+          <div class="prod-label-name">Rectangle 57×74mm</div>
+          <div class="prod-label-dim">Standard traiteur</div>
+        </div>
+        <div class="prod-label-card" onclick="selectLabelFormat(this,'zpl_50x50')" data-format="zpl_50x50">
+          <div class="prod-label-icon">⬛</div>
+          <div class="prod-label-name">Carré 50×50mm</div>
+          <div class="prod-label-dim">Pot / boîte</div>
+        </div>
+        <div class="prod-label-card" onclick="selectLabelFormat(this,'zpl_round60')" data-format="zpl_round60">
+          <div class="prod-label-icon">⭕</div>
+          <div class="prod-label-name">Ronde 60mm</div>
+          <div class="prod-label-dim">Pot / bocal</div>
+        </div>
+        <div class="prod-label-card" onclick="selectLabelFormat(this,'zpl_101x51')" data-format="zpl_101x51">
+          <div class="prod-label-icon">🏷️</div>
+          <div class="prod-label-name">Rectangle 101×51mm</div>
+          <div class="prod-label-dim">Grande étiquette</div>
+        </div>
+        <div class="prod-label-card" onclick="selectLabelFormat(this,'zpl_100x150')" data-format="zpl_100x150">
+          <div class="prod-label-icon">📦</div>
+          <div class="prod-label-name">100×150mm</div>
+          <div class="prod-label-dim">Logistique / colis</div>
+        </div>
+      </div>
+
+<!-- Config imprimante ZPL (masqué si PDF) -->
+<div id="prodZplConfig" style="display:none;margin-top:16px">
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px">🖨️ Imprimante ZPL <span style="font-weight:400;color:var(--text3);font-size:11px">(requis pour impression directe)</span></div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label class="form-label">Adresse IP</label>
+        <input class="form-input" id="prodPrinterIp" placeholder="192.168.1.100">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Port</label>
+        <input class="form-input" id="prodPrinterPort" placeholder="9100" value="9100">
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Prévisualisation étiquette -->
+<div id="prodLabelPreviewWrap" style="margin-top:20px;display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700;color:var(--text2)">👁️ Prévisualisation</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary btn-sm" onclick="downloadLabelPng()">⬇️ PNG</button>
+      <button class="btn btn-secondary btn-sm" onclick="downloadLabelPdf()">⬇️ PDF</button>
+    </div>
+  </div>
+  <div style="overflow-x:auto;padding:4px 0">
+    <canvas id="prodLabelCanvas" style="display:block;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);margin:0 auto;max-width:100%"></canvas>
+  </div>
+</div>
+
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="prodGoStep(1)">← Retour</button>
+        <button class="btn btn-primary" onclick="prodGoStep(3)" style="background:linear-gradient(135deg,#f0a500,#e07c20);box-shadow:0 4px 14px rgba(240,165,0,0.25)">Suivant →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3 : CONFIRMATION + EXPORT -->
+    <div id="prodStep3" style="display:none">
+      <div class="modal-title" style="margin-top:8px">✅ Récapitulatif</div>
+      <div id="prodRecap" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:18px;font-size:13px;line-height:1.8"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="prodGoStep(2)">← Retour</button>
+        <button class="btn btn-primary" id="btnProdExport" onclick="prodExport()" style="background:linear-gradient(135deg,#f0a500,#e07c20);box-shadow:0 4px 14px rgba(240,165,0,0.25)">🚀 Exporter</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 </body>
 </html>
-
-
-
