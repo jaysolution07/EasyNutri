@@ -3280,7 +3280,7 @@ async function searchOFF() {
     </div>`;
 
 try {
-const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=6&lc=fr&fields=product_name,nutriments,allergens_tags`;
+const url = `https://world.openfoodfacts.org/api/v2/search?search_terms=${encodeURIComponent(q)}&page_size=6&fields=product_name,nutriments,allergens_tags`;
 const controller = new AbortController();
 const timer = setTimeout(() => controller.abort(), 8000);
 const res = await fetch(url, { signal: controller.signal });
