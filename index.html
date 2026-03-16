@@ -3375,7 +3375,8 @@ async function doLogin() {
       return;
     }
     localStorage.setItem('easynutri_api', data.webapp_url);
-    localStorage.setItem('easynutri_user', email);
+localStorage.setItem('easynutri_user', email);
+localStorage.setItem('easynutri_last_active', Date.now());
     API = data.webapp_url;
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('userLabel').textContent = email;
@@ -3960,10 +3961,27 @@ ${energieLines ? `<h3>⚡ Détail énergie</h3><table><thead><tr><th>Équipement
 }
 // ── DÉMARRAGE ──
 (function() {
-  const savedApi  = localStorage.getItem('easynutri_api');
-  const savedUser = localStorage.getItem('easynutri_user');
+  const TIMEOUT_MS = 60 * 60 * 1000; // 1 heure
+
+  const savedApi    = localStorage.getItem('easynutri_api');
+  const savedUser   = localStorage.getItem('easynutri_user');
+  const lastActive  = parseInt(localStorage.getItem('easynutri_last_active') || '0');
+
+  // Session expirée ?
+  if (savedApi && Date.now() - lastActive > TIMEOUT_MS) {
+    localStorage.removeItem('easynutri_api');
+    localStorage.removeItem('easynutri_user');
+    localStorage.removeItem('easynutri_last_active');
+    // Afficher un message discret
+    const err = document.getElementById('loginError');
+    err.textContent = 'Session expirée après 1h d\'inactivité. Veuillez vous reconnecter.';
+    err.style.display = 'block';
+    return;
+  }
+
   if (savedApi) {
     API = savedApi;
+    localStorage.setItem('easynutri_last_active', Date.now()); // renouveler au démarrage
     document.getElementById('loginPage').style.display = 'none';
     if (savedUser) {
       document.getElementById('userLabel').textContent = savedUser;
@@ -3972,6 +3990,22 @@ ${energieLines ? `<h3>⚡ Détail énergie</h3><table><thead><tr><th>Équipement
     document.getElementById('btnLogout').style.display = 'inline-flex';
     init();
   }
+})();
+// Renouveler l'activité à chaque interaction utilisateur
+(function() {
+  const ACTIVITY_EVENTS = ['click', 'keydown', 'touchstart', 'scroll'];
+  let _activityThrottle = null;
+  ACTIVITY_EVENTS.forEach(evt => {
+    document.addEventListener(evt, () => {
+      if (_activityThrottle) return;
+      _activityThrottle = setTimeout(() => {
+        if (localStorage.getItem('easynutri_api')) {
+          localStorage.setItem('easynutri_last_active', Date.now());
+        }
+        _activityThrottle = null;
+      }, 10000); // max 1 écriture toutes les 10s
+    }, { passive: true });
+  });
 })();
 </script>
 <!-- MODAL IMPORT OPEN FOOD FACTS -->
