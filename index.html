@@ -132,7 +132,7 @@
   .etiq-preview-text { font-size: 12.5px; line-height: 1.9; color: var(--text); font-family: 'Sora', sans-serif; }
   .etiq-allergen { font-weight: 700; text-decoration: underline; }
   .etiq-pct { font-size: 10px; color: var(--text3); }
-  .nutri-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
+  .nutri-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
   .nutri-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; text-align: center; }
   .nutri-card .val { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--g3); }
   .nutri-card .unit { font-size: 10px; color: var(--text3); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
@@ -689,6 +689,7 @@
     <div class="nav-item" onclick="showPage('recettes')" id="nav-recettes"><span class="icon">🍽️</span> Recettes</div>
     <div class="nav-item" onclick="showPage('ingredients')" id="nav-ingredients"><span class="icon">🥦</span> Ingrédients</div>
     <div class="nav-item" onclick="showPage('fournisseurs')" id="nav-fournisseurs"><span class="icon">🏭</span> Fournisseurs</div>
+<div class="nav-item" onclick="showPage('decision')" id="nav-decision"><span class="icon">📊</span> Décision</div>
     <div class="divider" style="margin:8px 0"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:0 12px 6px">
       <div class="nav-section" style="padding:0">Catégories</div>
@@ -725,8 +726,15 @@
           <div class="home-card-desc">Suivez vos fournisseurs, contacts et agréments</div>
           <div class="home-card-arrow">→</div>
         </div>
+        <div class="home-card" onclick="showPage('decision')">
+          <div class="home-card-icon">📊</div>
+          <div class="home-card-title">Décision</div>
+          <div class="home-card-desc">Calculez le coût net de revient avec toutes vos charges</div>
+          <div class="home-card-arrow">→</div>
+        </div>
       </div>
     </div>
+
 
     <!-- PAGE RECETTES -->
     <div id="pageRecettes" style="display:none">
@@ -864,8 +872,154 @@
         </div>
       </div>
     </div>
+<!-- PAGE DÉCISION -->
+<div id="pageDecision" style="display:none">
+  <div class="page-header">
+    <div>
+      <button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+      <div class="page-title">Module <span>Décision</span></div>
+      <div class="text-sm text-muted mt-2">Calcul du coût net de revient par recette</div>
+    </div>
+    <button class="btn btn-secondary" onclick="openModalRessource()">⚙️ Gérer les ressources</button>
+  </div>
+
+  <!-- Sélecteur de recette -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <div class="card-title">🍽️ Sélectionner une recette</div>
+    </div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Recette</label>
+          <select class="form-select" id="decisionRecetteSelect" onchange="loadDecisionRecette()">
+            <option value="">— Choisir une recette —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantité produite (g)</label>
+          <input class="form-input" id="decisionQte" type="number" placeholder="Ex: 1000" value="1000" oninput="calcDecision()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="decisionContent" style="display:none">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+      <!-- Colonne gauche : charges -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Coût matière -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🥦 Coût matière</div>
+            <span class="badge badge-green" id="decisionCoutMatiere">0,00 €</span>
+          </div>
+          <div class="card-body" id="decisionMatiereDetail" style="padding-top:10px;font-size:12px;color:var(--text2)"></div>
+        </div>
+
+        <!-- Coût humain -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👤 Main d'œuvre</div>
+            <span class="badge badge-blue" id="decisionCoutHumain">0,00 €</span>
+          </div>
+          <div class="card-body" style="padding-top:12px">
+            <div id="decisionHumainRows" style="display:flex;flex-direction:column;gap:8px"></div>
+            <button class="btn btn-secondary btn-sm mt-2" onclick="addDecisionHumainRow()">＋ Ajouter</button>
+          </div>
+        </div>
+
+        <!-- Énergie -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚡ Énergie / charges</div>
+            <span class="badge badge-orange" id="decisionCoutEnergie">0,00 €</span>
+          </div>
+          <div class="card-body" style="padding-top:12px">
+            <div id="decisionEnergieRows" style="display:flex;flex-direction:column;gap:8px"></div>
+            <button class="btn btn-secondary btn-sm mt-2" onclick="addDecisionEnergieRow()">＋ Ajouter</button>
+          </div>
+        </div>
+
+<!-- Emballage -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">📦 Emballage</div>
+    <span class="badge badge-gray" id="decisionCoutEmballage">0,00 €</span>
+  </div>
+  <div class="card-body" style="padding-top:12px">
+    <div id="decisionEmballageRows" style="display:flex;flex-direction:column;gap:8px"></div>
+   <button class="btn btn-secondary btn-sm mt-2" onclick="addDecisionEmballageRow()">＋ Ajouter</button>
+  </div>
+</div>
+
+      </div>
+
+      <!-- Colonne droite : résumé -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card" style="position:sticky;top:88px">
+          <div class="accent-bar"></div>
+          <div class="card-header">
+            <div class="card-title">💰 Coût net de revient</div>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="font-size:13px;color:var(--text2)">🥦 Matière première</span>
+                <span style="font-weight:600;color:var(--text)" id="sumMatiere">0,00 €</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="font-size:13px;color:var(--text2)">👤 Main d'œuvre</span>
+                <span style="font-weight:600;color:var(--text)" id="sumHumain">0,00 €</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="font-size:13px;color:var(--text2)">⚡ Énergie / charges</span>
+                <span style="font-weight:600;color:var(--text)" id="sumEnergie">0,00 €</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="font-size:13px;color:var(--text2)">📦 Emballage</span>
+                <span style="font-weight:600;color:var(--text)" id="sumEmballage">0,00 €</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;background:linear-gradient(135deg,rgba(103,181,75,0.08),rgba(31,140,136,0.08));border-radius:10px;padding:14px 16px;margin-top:4px">
+                <span style="font-size:14px;font-weight:700;color:var(--text)">Total net</span>
+                <span style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--g3)" id="sumTotal">0,00 €</span>
+              </div>
+            </div>
+
+            <!-- Indicateurs par kg / par portion -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+              <div class="nutri-card">
+                <div class="val" id="coutParKg" style="font-size:18px">—</div>
+                <div class="unit">€/kg</div>
+                <div class="lbl">Coût / kg</div>
+              </div>
+              <div class="nutri-card">
+                <div class="val" id="coutParPortion" style="font-size:18px">—</div>
+                <div class="unit">€/portion</div>
+                <div class="lbl">Coût / portion</div>
+              </div>
+            </div>
+
+            <!-- Taille de portion -->
+            <div class="form-group" style="margin-bottom:16px">
+              <label class="form-label">Taille d'une portion (g)</label>
+              <input class="form-input" id="decisionPortion" type="number" placeholder="100" value="100" oninput="calcDecision()">
+            </div>
+
+            <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportDecisionPdf()">
+              📄 Exporter PDF complet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
   </main>
 </div>
+
 
 <!-- MODAL RECETTE -->
 <div class="modal-overlay" id="modalRecette">
@@ -956,7 +1110,10 @@
   <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
   <div class="modal-title" style="margin:0" id="modalIngTitle">Nouvel ingrédient</div>
-  <button class="btn btn-secondary btn-sm" onclick="openImportOFFModal()" id="btnImportOFF" style="white-space:nowrap">🔍 Importer depuis OFF</button>
+  <button class="btn btn-secondary btn-sm" onclick="openImportOFFModal()" 
+        id="btnImportOFF" style="white-space:nowrap">
+  🌿 Importer depuis Ciqual
+</button>
 </div>
     <div class="form-row">
       <div class="form-group" style="grid-column:1/-1"><label class="form-label">Nom de l'ingrédient</label><input class="form-input" id="ingNom" placeholder="Ex: Poulet grillé, Tomate fraîche…"></div>
@@ -1013,6 +1170,13 @@
     <div class="divider"></div>
     <div class="form-group" id="allergenesSection">
       <label class="form-label">Allergènes</label>
+<div id="allergenesImportWarning" style="display:none;background:#fff0f0;border:1.5px solid #e05c5c;border-radius:10px;padding:10px 14px;margin-bottom:10px;gap:10px;align-items:flex-start">
+  <span style="font-size:16px;flex-shrink:0">⚠️</span>
+  <div style="font-size:11.5px;color:#c0392b;line-height:1.5">
+    <strong>Allergènes pré-cochés automatiquement — à vérifier impérativement</strong><br>
+    <span style="font-size:10.5px;opacity:0.85">La détection est approximative. Vous êtes responsable de la déclaration finale.</span>
+  </div>
+</div>
       <div style="background:#fff8e6;border:1.5px solid #f0c040;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start">
         <span style="font-size:16px;flex-shrink:0">⚠️</span>
         <div style="font-size:11.5px;color:#7a5a00;line-height:1.5"><strong>Sélectionnez les allergènes présents</strong> — ils apparaîtront <strong>EN MAJUSCULES</strong> dans les fiches techniques.<br><span style="font-size:10.5px;opacity:0.8">Obligation réglementaire UE n°1169/2011</span></div>
@@ -1092,7 +1256,7 @@ async function init() {
     await loadCategories();   // ← charge depuis le Sheets
 
     splashProgress(80, 'Chargement des recettes…');
-    renderIngredientsList(); renderFournisseursList();
+    renderIngredientsList(); renderFournisseursList();await      loadRessources();
     await loadRecettes();
 
     splashProgress(100, 'Prêt !');
@@ -1281,12 +1445,13 @@ async function deleteCategorie(i) {
 
 // ── PAGES ──
 function showPage(p) {
-  ['accueil','recettes','ingredients','fournisseurs'].forEach(name => {
+  ['accueil','recettes','ingredients','fournisseurs','decision'].forEach(name => {
     const el = document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1));
     if (el) el.style.display = p === name ? 'block' : 'none';
     const nav = document.getElementById('nav-' + name);
     if (nav) nav.classList.toggle('active', p === name);
   });
+  if (p === 'decision') showDecisionPage();
 }
 
 // ── FOURNISSEURS ──
@@ -1344,6 +1509,7 @@ async function saveFournisseurLocal() {
       affected.forEach(i => { i.fournisseur = nom; });
       ingredientsFiltered = ingredientsFiltered.map(i => i.fournisseur === oldNom ? {...i, fournisseur: nom} : i);
       renderIngredientsList();
+      await loadRessources();
       affected.forEach(i => fetch(API, { method:'POST', body: JSON.stringify({ action:'saveIngredient', ...i }) }));
     }
     toast('Fournisseur sauvegardé ✓', 'success');
@@ -1754,6 +1920,8 @@ function openModalIngredient(id) {
   ['ingNom','ingKjoules','ingEnergie','ingProteines','ingGlucides','ingSucres','ingLipides','ingAgs','ingSel','ingFibres','ingEditId','ingPrix'].forEach(f=>document.getElementById(f).value='');
   document.getElementById('ingDlcType').value=''; document.getElementById('ingUnite').value='kg'; document.getElementById('ingEquivPoids').value='1000';
   document.getElementById('equivPoidsGroup').style.display='none'; document.getElementById('composeAllergenesPreview').style.display='none';
+const w = document.getElementById('allergenesImportWarning');
+if (w) w.style.display = 'none';
   document.getElementById('btnDeleteIng').style.display='none'; document.getElementById('modalIngTitle').textContent='Nouvel ingrédient';
   setType('simple'); composeRows=[]; renderComposeRows(); populateFournisseurSelect(''); renderAllergenesCheckboxes([]);
   if (id) {
@@ -3231,25 +3399,8 @@ function logout() {
   location.reload();
 }
 // ════════════════════════════════════════════
-//  IMPORT OPEN FOOD FACTS
+//  IMPORT CIQUAL — via Google Sheets EasyMaster
 // ════════════════════════════════════════════
-
-const OFF_ALLERGEN_MAP = {
-  'en:gluten':      'GLUTEN',
-  'en:crustaceans': 'CRUSTACES',
-  'en:eggs':        'OEUFS',
-  'en:fish':        'POISSONS',
-  'en:peanuts':     'ARACHIDES',
-  'en:soybeans':    'SOJA',
-  'en:milk':        'LAIT',
-  'en:nuts':        'FRUITS_A_COQUES',
-  'en:celery':      'CELERI',
-  'en:mustard':     'MOUTARDE',
-  'en:sesame':      'SESAME',
-  'en:sulphites':   'SULFITES',
-  'en:lupin':       'LUPIN',
-  'en:molluscs':    'MOLLUSQUES',
-};
 
 let _offDebounce = null;
 let _offResults  = [];
@@ -3265,7 +3416,7 @@ function openImportOFFModal() {
 
 function onOFFInput() {
   clearTimeout(_offDebounce);
-  _offDebounce = setTimeout(searchOFF, 500);
+  _offDebounce = setTimeout(searchOFF, 400);
 }
 
 async function searchOFF() {
@@ -3274,174 +3425,538 @@ async function searchOFF() {
   if (q.length < 2) return;
 
   container.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px;gap:12px">
+    <div style="display:flex;flex-direction:column;align-items:center;
+                justify-content:center;padding:36px;gap:12px">
       <div class="skel-spinner"></div>
-      <div class="skel-spinner-label">Recherche en cours…</div>
+      <div class="skel-spinner-label">Recherche Ciqual…</div>
     </div>`;
 
   try {
-    // Traduction FR→EN via MyMemory (gratuit)
-    let qEn = q;
-    try {
-      const tRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(q)}&langpair=fr|en`);
-      const tData = await tRes.json();
-      if (tData.responseStatus === 200) qEn = tData.responseData.translatedText;
-    } catch(e) { /* si traduction échoue, on cherche en français */ }
-
-    // Recherche USDA
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(qEn)}&dataType=Foundation,SR%20Legacy&pageSize=6&api_key=RfcLdFhiMFQnIWn61h1PvkdE7OgjJ1Zm5x2BEF9s`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
+    const res  = await fetch(MASTER_API + '?action=ciqual&q=' + encodeURIComponent(q));
     const data = await res.json();
-    const foods = (data.foods || []);
 
-    if (!foods.length) {
-      container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:36px;font-size:13px">Aucun résultat — essaie un terme plus général.</div>';
+    if (!Array.isArray(data) || !data.length) {
+      container.innerHTML =
+        '<div style="text-align:center;color:var(--text3);padding:36px;font-size:13px">Aucun résultat — essaie un terme plus général.</div>';
       return;
     }
 
-    // Convertir format USDA → format OFF pour réutiliser renderOFFResults
-    _offResults = foods.map(f => {
-      const get = (name) => {
-        const n = (f.foodNutrients || []).find(x => x.nutrientName === name);
-        return n ? n.value : null;
-      };
-      return {
-        product_name: q + ' — ' + f.description, // nom français + nom USDA
-        _fdcId: f.fdcId,
-        nutriments: {
-          'energy-kcal_100g': get('Energy') ? Math.round(get('Energy')) : null,
-          'energy_100g': get('Energy') ? Math.round(get('Energy') * 4.184) : null,
-          'proteins_100g': get('Protein'),
-          'carbohydrates_100g': get('Carbohydrate, by difference'),
-          'sugars_100g': get('Sugars, total including NLEA'),
-          'fat_100g': get('Total lipid (fat)'),
-          'saturated-fat_100g': get('Fatty acids, total saturated'),
-          'salt_100g': get('Sodium, Na') ? +(get('Sodium, Na') * 2.5 / 1000).toFixed(3) : null,
-          'fiber_100g': get('Fiber, total dietary'),
-        },
-        allergens_tags: []
-      };
-    });
-
-    renderOFFResults(_offResults);
+    _offResults = data;
+    renderOFFResults(data);
 
   } catch(e) {
     container.innerHTML = `
       <div style="text-align:center;padding:36px">
         <div style="font-size:28px;margin-bottom:10px">📡</div>
-        <div style="color:var(--danger);font-size:13px;margin-bottom:8px">Service inaccessible</div>
-        <div style="color:var(--text3);font-size:11.5px">Vérifie ta connexion ou réessaie dans quelques secondes</div>
-        <button class="btn btn-secondary btn-sm" style="margin-top:14px" onclick="searchOFF()">↻ Réessayer</button>
-      </div>`;
-  }
-}
-async function searchCIQUAL(q) {
-  const container = document.getElementById('offResults');
-  container.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:36px;gap:12px">
-      <div class="skel-spinner"></div>
-      <div class="skel-spinner-label">Nouvelle tentative…</div>
-    </div>`;
-
-  try {
-    // 2ème tentative avec l'ancienne API OFF (plus compatible)
-    const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=10&lc=fr&fields=product_name,nutriments,allergens_tags`;
-    const res  = await fetch(url);
-    const data = await res.json();
-    const products = (data.products || []).filter(p => p.product_name?.trim());
-    _offResults = products;
-    if (!products.length) {
-      container.innerHTML = '<div style="text-align:center;color:var(--text3);padding:36px;font-size:13px">Aucun résultat — essaie un terme plus général.</div>';
-      return;
-    }
-    renderOFFResults(products);
-  } catch(e) {
-    container.innerHTML = `
-      <div style="text-align:center;padding:36px">
-        <div style="font-size:28px;margin-bottom:10px">📡</div>
-        <div style="color:var(--danger);font-size:13px;margin-bottom:8px">Open Food Facts inaccessible</div>
-        <div style="color:var(--text3);font-size:11.5px">Vérifie ta connexion ou réessaie dans quelques secondes</div>
-        <button class="btn btn-secondary btn-sm" style="margin-top:14px" onclick="searchOFF()">↻ Réessayer</button>
+        <div style="color:var(--danger);font-size:13px">Erreur de connexion</div>
+        <button class="btn btn-secondary btn-sm"
+                style="margin-top:14px" onclick="searchOFF()">↻ Réessayer</button>
       </div>`;
   }
 }
 
-function renderOFFResults(products, isCiqual = false) {
+function renderOFFResults(results) {
   const container = document.getElementById('offResults');
-  container.innerHTML = isCiqual
-    ? `<div style="padding:6px 18px;font-size:10px;color:var(--text3);background:#f7faf8;border-bottom:1px solid var(--border)">📋 Résultats CIQUAL (table nutritionnelle française officielle)</div>`
-    : '';
 
-  container.innerHTML += products.map((p, i) => {
-    const n    = p.nutriments || {};
-    const kcal = n['energy-kcal_100g'] != null ? Math.round(n['energy-kcal_100g']) : null;
-    const prot = n['proteins_100g']      != null ? n['proteins_100g'].toFixed(1)    : null;
-    const lip  = n['fat_100g']           != null ? n['fat_100g'].toFixed(1)         : null;
-    const gluc = n['carbohydrates_100g'] != null ? n['carbohydrates_100g'].toFixed(1): null;
-    const allergenCodes = (p.allergens_tags || []).map(t => OFF_ALLERGEN_MAP[t]).filter(Boolean);
-    const macroStr = [
-      kcal != null ? kcal + ' kcal' : null,
-      prot != null ? 'P ' + prot + 'g' : null,
-      lip  != null ? 'L ' + lip  + 'g' : null,
-      gluc != null ? 'G ' + gluc + 'g' : null,
-    ].filter(Boolean).join(' · ');
+  container.innerHTML =
+    `<div style="padding:6px 18px 8px;font-size:10px;color:var(--text3);
+                 background:#f7faf8;border-bottom:1px solid var(--border);
+                 display:flex;align-items:center;gap:6px">
+       🌿 <strong>Table Ciqual 2020 — ANSES</strong> · données officielles françaises
+     </div>` +
+
+  results.map((f, i) => {
+    const kcal = f.kcal != null ? Math.round(f.kcal) + ' kcal' : null;
+    const prot = f.prot != null ? 'P ' + f.prot.toFixed(1) + 'g' : null;
+    const lip  = f.lip  != null ? 'L ' + f.lip.toFixed(1)  + 'g' : null;
+    const gluc = f.gluc != null ? 'G ' + f.gluc.toFixed(1) + 'g' : null;
+    const macroStr = [kcal, prot, lip, gluc].filter(Boolean).join(' · ');
 
     return `
       <div onclick="importOFFItem(${i})"
-           style="padding:11px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.12s"
+           style="padding:12px 18px;border-bottom:1px solid var(--border);
+                  cursor:pointer;transition:background 0.12s"
            onmouseenter="this.style.background='var(--surface2)'"
            onmouseleave="this.style.background=''">
-        <div style="font-weight:600;font-size:13.5px;color:var(--text);margin-bottom:3px">${escHtml(p.product_name)}</div>
-        <div style="font-size:11.5px;color:var(--text3);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span>${macroStr || 'Valeurs non disponibles'}</span>
-          ${allergenCodes.length ? `<span style="background:#fff8e6;color:#9a6500;border:1px solid #f0c040;border-radius:4px;padding:1px 7px;font-size:10.5px;font-weight:600">⚠️ ${allergenCodes.join(', ')}</span>` : ''}
+        <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:3px">
+          ${escHtml(f.nom)}
+        </div>
+        <div style="font-size:11.5px;color:var(--text3)">
+          ${macroStr || '<em>Valeurs non disponibles</em>'}
         </div>
       </div>`;
   }).join('');
 }
 
 function importOFFItem(idx) {
-  const p = _offResults[idx];
-  if (!p) return;
-  const n = p.nutriments || {};
-  const v = (key, round = false) => {
-    const val = n[key];
-    if (val == null) return '';
-    return round ? String(Math.round(val)) : val.toFixed(2);
-  };
-  document.getElementById('ingNom').value       = p.product_name || '';
-  document.getElementById('ingEnergie').value   = v('energy-kcal_100g', true) || (n['energy_100g'] != null ? String(Math.round(n['energy_100g'] / 4.184)) : '');
-  document.getElementById('ingKjoules').value   = v('energy_100g', true);
-  document.getElementById('ingProteines').value = v('proteins_100g');
-  document.getElementById('ingGlucides').value  = v('carbohydrates_100g');
-  document.getElementById('ingSucres').value    = v('sugars_100g');
-  document.getElementById('ingLipides').value   = v('fat_100g');
-  document.getElementById('ingAgs').value       = v('saturated-fat_100g');
-  document.getElementById('ingSel').value       = v('salt_100g');
-  document.getElementById('ingFibres').value    = v('fiber_100g');
+  const f = _offResults[idx];
+  if (!f) return;
+
+  const fmt = (v, dec = 2) => (v != null ? v.toFixed(dec) : '');
+
+  document.getElementById('ingNom').value       = f.nom;
+  document.getElementById('ingKjoules').value   = f.kj   != null ? String(Math.round(f.kj))   : '';
+  document.getElementById('ingEnergie').value   = f.kcal != null ? String(Math.round(f.kcal)) : '';
+  document.getElementById('ingProteines').value = fmt(f.prot);
+  document.getElementById('ingGlucides').value  = fmt(f.gluc);
+  document.getElementById('ingSucres').value    = fmt(f.sucres);
+  document.getElementById('ingLipides').value   = fmt(f.lip);
+  document.getElementById('ingAgs').value       = fmt(f.ags);
+  document.getElementById('ingSel').value       = fmt(f.sel, 3);
+  document.getElementById('ingFibres').value    = fmt(f.fibres);
+
   setType('simple');
-  const allergenTags = p.allergens_tags || [];
+
+  // Reset allergènes + warning : Ciqual ne fournit pas les allergènes
   document.querySelectorAll('#allergenesCheckboxes input[type=checkbox]').forEach(cb => {
     cb.checked = false;
     const label = cb.closest('.allerg-chip');
-    if (label) { label.classList.remove('checked'); label.querySelector('.check-box').textContent = ''; }
+    if (label) {
+      label.classList.remove('checked');
+      label.querySelector('.check-box').textContent = '';
+    }
   });
-  allergenTags.forEach(tag => {
-    const mapped = OFF_ALLERGEN_MAP[tag];
-    if (!mapped) return;
-    document.querySelectorAll('#allergenesCheckboxes input[type=checkbox]').forEach(cb => {
-      if (cb.value.toUpperCase() === mapped.toUpperCase()) {
-        cb.checked = true;
-        const label = cb.closest('.allerg-chip');
-        if (label) { label.classList.add('checked'); label.querySelector('.check-box').textContent = '✓'; }
-      }
-    });
-  });
+
+  const w = document.getElementById('allergenesImportWarning');
+  if (w) {
+    w.style.display = 'flex';
+    w.querySelector('strong').textContent =
+      'Allergènes non fournis par Ciqual — à renseigner manuellement obligatoirement';
+  }
+
   closeModal('modalImportOFF');
-  toast('Ingrédient importé ✓', 'success');
+  toast('Importé depuis Ciqual ✓ — Renseignez les allergènes !', 'success');
+}
+// ════════════════════════════════════════════
+//  MODULE DÉCISION
+// ════════════════════════════════════════════
+
+let RESSOURCES = { humain: [], energie: [], emballages: [] };
+let decisionHumainRows   = [];  // [{ressId, nb_personnes, heures}]
+let decisionEnergieRows  = [];  // [{ressId, heures}]
+
+// ── Chargement ressources ──
+async function loadRessources() {
+  try {
+    const r = await fetch(API + '?action=getResourceData');
+    RESSOURCES = await r.json();
+  } catch(e) { RESSOURCES = { humain: [], energie: [], emballages: [] }; }
+}
+
+// ── Ouvrir modal ressource ──
+async function openModalRessource() {
+  openModal('modalRessource');
+  // Skeleton pendant le chargement
+  ['ressHumainList','ressEnergieList','ressEmballageList'].forEach(id => {
+    document.getElementById(id).innerHTML = `
+      <div class="skel-spinner-wrap" style="padding:12px">
+        <div class="skel-spinner"></div>
+        <div class="skel-spinner-label">Chargement…</div>
+      </div>`;
+  });
+  await loadRessources();
+  renderRessourceLists();
+}
+
+function renderRessourceLists() {
+  const renderList = (items, containerId, type) => {
+    const el = document.getElementById(containerId);
+    if (!items.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Aucune entrée</div>'; return; }
+    el.innerHTML = items.map(item => `
+      <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+        <span style="flex:1;font-size:13px;font-weight:600">${escHtml(item.nom)}</span>
+        <span style="font-size:12px;color:var(--g3);font-weight:600">${item.cout.toFixed(2)} €/h</span>
+        <button class="btn btn-ghost btn-icon" onclick="deleteRessource('${item.id}','${type}')">🗑️</button>
+      </div>`).join('');
+  };
+  renderList(RESSOURCES.humain,     'ressHumainList',   'humain');
+  renderList(RESSOURCES.energie,    'ressEnergieList',  'energie');
+
+  // Emballages (€/unité)
+  const el = document.getElementById('ressEmballageList');
+  if (!RESSOURCES.emballages.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0">Aucune entrée</div>'; }
+  else el.innerHTML = RESSOURCES.emballages.map(item => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+      <span style="flex:1;font-size:13px;font-weight:600">${escHtml(item.nom)}</span>
+      <span style="font-size:12px;color:var(--g3);font-weight:600">${item.cout.toFixed(2)} €/u</span>
+      <button class="btn btn-ghost btn-icon" onclick="deleteRessource('${item.id}','emballage')">🗑️</button>
+    </div>`).join('');
+}
+
+async function saveRessource(type) {
+  const nomMap  = { humain: 'ressHumainNom',    energie: 'ressEnergieNom',    emballage: 'ressEmballageNom'    };
+  const coutMap = { humain: 'ressHumainCout',   energie: 'ressEnergieCout',   emballage: 'ressEmballageCout'   };
+  const listMap = { humain: 'ressHumainList',   energie: 'ressEnergieList',   emballage: 'ressEmballageList'   };
+  const nom  = document.getElementById(nomMap[type]).value.trim();
+  const cout = parseFloat(document.getElementById(coutMap[type]).value) || 0;
+  if (!nom || cout <= 0) { toast('Renseignez nom et coût', 'error'); return; }
+  // Skeleton sur la liste concernée
+  document.getElementById(listMap[type]).innerHTML = `
+    <div class="skel-spinner-wrap" style="padding:12px">
+      <div class="skel-spinner"></div>
+      <div class="skel-spinner-label">Sauvegarde…</div>
+    </div>`;
+  try {
+    await fetch(API, { method: 'POST', body: JSON.stringify({ action: 'saveResource', type, nom, cout }) });
+    document.getElementById(nomMap[type]).value  = '';
+    document.getElementById(coutMap[type]).value = '';
+    await loadRessources();
+    renderRessourceLists();
+    refreshDecisionSelects();
+    toast('Ressource ajoutée ✓', 'success');
+  } catch(e) { toast('Erreur sauvegarde', 'error'); }
+}
+
+async function deleteRessource(id, type) {
+  if (!confirm('Supprimer cette ressource ?')) return;
+  try {
+    await fetch(API + '?action=deleteResource&id=' + id);
+    await loadRessources();
+    renderRessourceLists();
+    refreshDecisionSelects();
+    toast('Ressource supprimée', 'success');
+  } catch(e) { toast('Erreur suppression', 'error'); }
+}
+
+// ── Page Décision ──
+async function showDecisionPage() {
+  await loadRessources();
+  // Remplir select recettes
+  const sel = document.getElementById('decisionRecetteSelect');
+  sel.innerHTML = '<option value="">— Choisir une recette —</option>' +
+    RECETTES.map(r => `<option value="${r.id}">${escHtml(r.nom)}</option>`).join('');
+  refreshDecisionSelects();
+}
+function refreshDecisionSelects() {
+  // Les emballages sont gérés via addDecisionEmballageRow()
+}
+async function loadDecisionRecette() {
+  const id = document.getElementById('decisionRecetteSelect').value;
+  if (!id) { document.getElementById('decisionContent').style.display = 'none'; return; }
+
+  // Charger les ingrédients de la recette
+  try {
+    const r = await fetch(API + '?action=recette&id=' + id);
+    const rawIng = await r.json();
+    // Stocker pour calcul
+    window._decisionIng = rawIng;
+  } catch(e) { window._decisionIng = []; }
+
+  decisionHumainRows  = [];
+  decisionEnergieRows = [];
+  document.getElementById('decisionContent').style.display = 'block';
+  renderDecisionRows();
+  calcDecision();
+}
+
+// ── Rows humain / énergie ──
+function addDecisionHumainRow() {
+  if (!RESSOURCES.humain.length) { toast('Ajoutez d\'abord des ressources humaines', 'error'); return; }
+  decisionHumainRows.push({ ressId: RESSOURCES.humain[0].id, nb: 1, heures: 1 });
+  renderDecisionRows();
+  calcDecision();
+}
+
+function addDecisionEnergieRow() {
+  if (!RESSOURCES.energie.length) { toast('Ajoutez d\'abord des ressources énergie', 'error'); return; }
+  decisionEnergieRows.push({ ressId: RESSOURCES.energie[0].id, heures: 1 });
+  renderDecisionRows();
+  calcDecision();
+}
+function addDecisionEmballageRow() {
+  if (!RESSOURCES.emballages.length) { toast('Ajoutez d\'abord des emballages dans les ressources', 'error'); return; }
+  const container = document.getElementById('decisionEmballageRows');
+  const div = document.createElement('div');
+  div.className = 'decision-emballage-row';
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 70px auto;gap:6px;align-items:center';
+  div.innerHTML = `
+    <select class="form-select" style="font-size:12px" onchange="calcDecision()">
+      ${RESSOURCES.emballages.map(e => `<option value="${e.id}" data-cout="${e.cout}">${escHtml(e.nom)} — ${e.cout.toFixed(2)} €</option>`).join('')}
+    </select>
+    <div style="position:relative">
+      <input type="number" class="form-input" value="1" min="1" style="padding-right:24px;font-size:12px" oninput="calcDecision()">
+      <span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3)">x</span>
+    </div>
+    <button class="btn btn-ghost btn-icon" onclick="this.closest('.decision-emballage-row').remove();calcDecision()">✕</button>
+  `;
+  container.appendChild(div);
+  calcDecision();
+}
+function renderDecisionRows() {
+  // Humain
+  const hEl = document.getElementById('decisionHumainRows');
+  if (!decisionHumainRows.length) {
+    hEl.innerHTML = '<div style="font-size:12px;color:var(--text3)">Aucune main d\'œuvre ajoutée</div>';
+  } else {
+    hEl.innerHTML = decisionHumainRows.map((row, i) => `
+      <div style="display:grid;grid-template-columns:1fr 70px 70px auto;gap:6px;align-items:center">
+        <select class="form-select" style="font-size:12px" onchange="decisionHumainRows[${i}].ressId=this.value;calcDecision()">
+          ${RESSOURCES.humain.map(h => `<option value="${h.id}" ${h.id===row.ressId?'selected':''}>${escHtml(h.nom)} (${h.cout}€/h)</option>`).join('')}
+        </select>
+        <div style="position:relative">
+          <input type="number" class="form-input" value="${row.nb}" min="1" style="padding-right:26px;font-size:12px"
+            oninput="decisionHumainRows[${i}].nb=parseFloat(this.value)||1;calcDecision()">
+          <span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3)">pers</span>
+        </div>
+        <div style="position:relative">
+          <input type="number" class="form-input" value="${row.heures}" min="0" step="0.5" style="padding-right:20px;font-size:12px"
+            oninput="decisionHumainRows[${i}].heures=parseFloat(this.value)||0;calcDecision()">
+          <span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3)">h</span>
+        </div>
+        <button class="btn btn-ghost btn-icon" onclick="decisionHumainRows.splice(${i},1);renderDecisionRows();calcDecision()">✕</button>
+      </div>`).join('');
+  }
+
+  // Énergie
+  const eEl = document.getElementById('decisionEnergieRows');
+  if (!decisionEnergieRows.length) {
+    eEl.innerHTML = '<div style="font-size:12px;color:var(--text3)">Aucune charge énergie ajoutée</div>';
+  } else {
+    eEl.innerHTML = decisionEnergieRows.map((row, i) => `
+      <div style="display:grid;grid-template-columns:1fr 80px auto;gap:6px;align-items:center">
+        <select class="form-select" style="font-size:12px" onchange="decisionEnergieRows[${i}].ressId=this.value;calcDecision()">
+          ${RESSOURCES.energie.map(e => `<option value="${e.id}" ${e.id===row.ressId?'selected':''}>${escHtml(e.nom)} (${e.cout}€/h)</option>`).join('')}
+        </select>
+        <div style="position:relative">
+          <input type="number" class="form-input" value="${row.heures}" min="0" step="0.5" style="padding-right:20px;font-size:12px"
+            oninput="decisionEnergieRows[${i}].heures=parseFloat(this.value)||0;calcDecision()">
+          <span style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3)">h</span>
+        </div>
+        <button class="btn btn-ghost btn-icon" onclick="decisionEnergieRows.splice(${i},1);renderDecisionRows();calcDecision()">✕</button>
+      </div>`).join('');
+  }
+}
+
+// ── Calcul global ──
+function calcDecision() {
+  const qte = parseFloat(document.getElementById('decisionQte').value) || 1000;
+
+  // 1. Coût matière
+  let coutMatiere = 0;
+  const matiereLines = [];
+  (window._decisionIng || []).forEach(row => {
+    const ing = ING.find(x => x.id == row.ingredient); if (!ing) return;
+    const p = parseFloat(row.poids) || 0;
+    const prixKg = parseFloat(ing.prix_kg) || 0;
+    if (prixKg > 0) {
+      const eq = ing.unite === 'L' ? (parseFloat(ing.equiv_poids_g) || 1000) : 1000;
+      const ligneCout = (p / eq) * prixKg;
+      coutMatiere += ligneCout;
+      matiereLines.push({ nom: ing.nom, poids: p, cout: ligneCout });
+    }
+  });
+  // Ajustement selon quantité produite vs poids recette
+  const poidsRecette = (window._decisionIng || []).reduce((a, r) => a + (parseFloat(r.poids) || 0), 0);
+  const ratio = poidsRecette > 0 ? qte / poidsRecette : 1;
+  coutMatiere *= ratio;
+
+  // 2. Coût humain
+  let coutHumain = 0;
+  decisionHumainRows.forEach(row => {
+    const ress = RESSOURCES.humain.find(h => h.id === row.ressId);
+    if (ress) coutHumain += (row.nb || 1) * (row.heures || 0) * ress.cout;
+  });
+
+  // 3. Coût énergie
+  let coutEnergie = 0;
+  decisionEnergieRows.forEach(row => {
+    const ress = RESSOURCES.energie.find(e => e.id === row.ressId);
+    if (ress) coutEnergie += (row.heures || 0) * ress.cout;
+  });
+
+// 4. Emballage
+  let coutEmballage = 0;
+  document.querySelectorAll('.decision-emballage-row').forEach(row => {
+    const sel = row.querySelector('select');
+    const qty = parseFloat(row.querySelector('input').value) || 1;
+    if (sel && sel.value) {
+      const opt = sel.options[sel.selectedIndex];
+      coutEmballage += (parseFloat(opt.dataset.cout) || 0) * qty;
+    }
+  });
+
+  const total = coutMatiere + coutHumain + coutEnergie + coutEmballage;
+  const portion = parseFloat(document.getElementById('decisionPortion').value) || 100;
+
+  // Affichage
+  const fmt = v => v.toFixed(2) + ' €';
+  document.getElementById('decisionCoutMatiere').textContent  = fmt(coutMatiere);
+  document.getElementById('decisionCoutHumain').textContent   = fmt(coutHumain);
+  document.getElementById('decisionCoutEnergie').textContent  = fmt(coutEnergie);
+  document.getElementById('decisionCoutEmballage').textContent = fmt(coutEmballage);
+  document.getElementById('sumMatiere').textContent   = fmt(coutMatiere);
+  document.getElementById('sumHumain').textContent    = fmt(coutHumain);
+  document.getElementById('sumEnergie').textContent   = fmt(coutEnergie);
+  document.getElementById('sumEmballage').textContent = fmt(coutEmballage);
+  document.getElementById('sumTotal').textContent     = fmt(total);
+  document.getElementById('coutParKg').textContent    = qte > 0 ? (total / qte * 1000).toFixed(2) : '—';
+  document.getElementById('coutParPortion').textContent = qte > 0 ? (total / qte * portion).toFixed(2) : '—';
+
+  // Détail matière
+  const detEl = document.getElementById('decisionMatiereDetail');
+  if (matiereLines.length) {
+    detEl.innerHTML = matiereLines.map(l =>
+      `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span>${escHtml(l.nom)} (${l.poids}g)</span>
+        <span style="font-weight:600;color:var(--g3)">${(l.cout * ratio).toFixed(2)} €</span>
+      </div>`).join('');
+  } else {
+    detEl.innerHTML = '<div style="color:var(--text3);font-size:12px">Aucun ingrédient avec prix renseigné</div>';
+  }
+
+  // Stocker pour PDF
+  window._decisionResult = { coutMatiere, coutHumain, coutEnergie, coutEmballage, total, qte, ratio, portion, matiereLines };
+}
+
+// ── Export PDF complet ──
+function exportDecisionPdf() {
+  const recId  = document.getElementById('decisionRecetteSelect').value;
+  const recObj = RECETTES.find(r => r.id == recId);
+  if (!recObj) { toast('Sélectionnez une recette', 'error'); return; }
+
+  const res = window._decisionResult || {};
+  const fmt = v => (v || 0).toFixed(2) + ' €';
+  const nom = recObj.nom;
+  const qte = res.qte || 1000;
+  const portion = res.portion || 100;
+
+  // Calcul nutri
+  let nutri = { kj:0, kcal:0, prot:0, gluc:0, sucres:0, lip:0, ags:0, sel:0, fibres:0 };
+  let poidsTotal = 0;
+  (window._decisionIng || []).forEach(row => {
+    const ing = ING.find(x => x.id == row.ingredient); if (!ing) return;
+    const p = parseFloat(row.poids) || 0; poidsTotal += p;
+    nutri.kj     += (parseFloat(ing.energie_kjoules)||0)*p/100;
+    nutri.kcal   += (parseFloat(ing.energie_kcal)||0)*p/100;
+    nutri.prot   += (parseFloat(ing.proteines_g)||0)*p/100;
+    nutri.gluc   += (parseFloat(ing.glucides_g)||0)*p/100;
+    nutri.sucres += (parseFloat(ing.sucres_g)||0)*p/100;
+    nutri.lip    += (parseFloat(ing.lipides_g)||0)*p/100;
+    nutri.ags    += (parseFloat(ing.Ags)||0)*p/100;
+    nutri.sel    += (parseFloat(ing.sel_g)||0)*p/100;
+    nutri.fibres += (parseFloat(ing.fibres_g)||0)*p/100;
+  });
+  const n100 = v => poidsTotal > 0 ? (v/poidsTotal*100).toFixed(2) : '0.00';
+
+  // Étiquetage
+  // On simule RECETTE pour computeEtiquetage
+  const savedRecette = { ...RECETTE };
+  RECETTE.ingredients = (window._decisionIng || []).map(i => ({ ingredient: i.ingredient, poids: i.poids, eclater: !!i.eclater, quid: !!i.quid }));
+  const etiqItems = computeEtiquetage();
+  RECETTE.ingredients = savedRecette.ingredients;
+
+  const etiqHtml = etiqItems.map(e => {
+    const nomHtml = e.allergs.length ? `<strong style="text-decoration:underline">${escHtml(e.nom)}</strong>` : escHtml(e.nom);
+    return nomHtml + (e.quid ? ` <span style="color:#e07c20">(${e.pct}%)</span>` : '');
+  }).join(', ') + '.';
+
+  const allAllergs = [...new Set(etiqItems.flatMap(e => e.allergs))].sort();
+
+  // Lignes humain
+  const humainLines = decisionHumainRows.map(row => {
+    const ress = RESSOURCES.humain.find(h => h.id === row.ressId);
+    if (!ress) return '';
+    const cout = (row.nb || 1) * (row.heures || 0) * ress.cout;
+    return `<tr><td style="padding:6px 10px;border:1px solid #d6e8de">${escHtml(ress.nom)}</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:center">${row.nb} pers.</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:center">${row.heures} h</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600;color:#1f8c88">${cout.toFixed(2)} €</td></tr>`;
+  }).join('');
+
+  const energieLines = decisionEnergieRows.map(row => {
+    const ress = RESSOURCES.energie.find(e => e.id === row.ressId);
+    if (!ress) return '';
+    const cout = (row.heures || 0) * ress.cout;
+    return `<tr><td style="padding:6px 10px;border:1px solid #d6e8de">${escHtml(ress.nom)}</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:center" colspan="2">${row.heures} h</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600;color:#1f8c88">${cout.toFixed(2)} €</td></tr>`;
+  }).join('');
+
+  const embNoms = [...document.querySelectorAll('.decision-emballage-row select')].map(s => {
+    const row = s.closest('.decision-emballage-row');
+    const qty = parseFloat(row.querySelector('input').value) || 1;
+    return s.options[s.selectedIndex]?.text.split(' — ')[0] + (qty > 1 ? ' ×'+qty : '');
+  });
+  const embNom = embNoms.length ? embNoms.join(', ') : '—';
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<title>Fiche Décision — ${escHtml(nom)}</title>
+<style>
+  @page { size: A4; margin: 15mm 18mm; }
+  body { font-family: Arial, sans-serif; color: #1a2e25; font-size: 13px; }
+  @media print { .no-print { display:none; } }
+  h2 { font-size:22px; margin:0 0 4px; }
+  h3 { font-size:14px; color:#1f8c88; margin:18px 0 8px; border-bottom:2px solid #d6e8de; padding-bottom:4px; }
+  table { width:100%; border-collapse:collapse; margin-bottom:8px; }
+  th { background:#e8f5f0; padding:7px 10px; text-align:left; border:1px solid #d6e8de; font-size:11px; text-transform:uppercase; }
+</style></head><body>
+
+<button class="no-print" onclick="window.print()" style="background:#1f8c88;color:white;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer;margin-bottom:16px">🖨️ Imprimer / PDF</button>
+
+<div style="border-bottom:3px solid #1f8c88;padding-bottom:14px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end">
+  <div>
+    <div style="font-size:10px;color:#2da882;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">📊 FICHE DE DÉCISION</div>
+    <h2>${escHtml(nom)}</h2>
+    <div style="font-size:12px;color:#8aaa99">Générée le ${new Date().toLocaleDateString('fr-FR')} — Quantité : ${qte} g</div>
+  </div>
+  <div style="text-align:right;font-size:10px;color:#8aaa99">EasyNutri — by JaySolution</div>
+</div>
+
+<h3>🏷️ Étiquetage ingrédients</h3>
+<div style="background:#f0f8f4;border:1.5px solid #d6e8de;border-radius:8px;padding:12px 16px;font-size:12px;line-height:1.9;margin-bottom:8px">
+  <span style="font-size:11px;font-weight:700;color:#8aaa99;text-transform:uppercase;letter-spacing:1px">INGRÉDIENTS : </span>${etiqHtml}
+</div>
+${allAllergs.length ? `<div style="background:#fff8e6;border:1.5px solid #f0a500;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px"><strong style="color:#7a5000">⚠️ ALLERGÈNES : </strong><span style="color:#7a5000;font-weight:700">${allAllergs.join(' — ')}</span></div>` : ''}
+
+<h3>📊 Valeurs nutritionnelles pour 100 g</h3>
+<table style="width:auto;min-width:380px;margin-bottom:20px">
+  <thead><tr><th>Nutriment</th><th style="text-align:right">Pour 100g</th></tr></thead>
+  <tbody>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de">Énergie</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right"><strong>${n100(nutri.kj)} kJ</strong> / ${n100(nutri.kcal)} kcal</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Matières grasses</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.lip)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de;padding-left:20px">dont AGS</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.ags)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Glucides</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.gluc)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de;padding-left:20px">dont Sucres</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.sucres)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Fibres</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.fibres)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de">Protéines</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.prot)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Sel</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.sel)} g</td></tr>
+  </tbody>
+</table>
+
+<h3>💰 Calcul du coût net de revient</h3>
+<table style="margin-bottom:8px">
+  <thead><tr><th>Poste</th><th style="text-align:right">Montant</th></tr></thead>
+  <tbody>
+    <tr><td style="padding:7px 10px;border:1px solid #d6e8de">🥦 Matière première (${qte}g)</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutMatiere)}</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:7px 10px;border:1px solid #d6e8de">👤 Main d'œuvre</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutHumain)}</td></tr>
+    <tr><td style="padding:7px 10px;border:1px solid #d6e8de">⚡ Énergie / charges</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutEnergie)}</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:7px 10px;border:1px solid #d6e8de">📦 Emballage (${escHtml(embNom)})</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutEmballage)}</td></tr>
+  </tbody>
+</table>
+
+<div style="background:linear-gradient(135deg,rgba(103,181,75,0.1),rgba(31,140,136,0.1));border:2px solid #2da882;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+  <div>
+    <div style="font-size:11px;color:#4a6358;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Coût net total (${qte}g)</div>
+    <div style="font-size:28px;font-weight:700;color:#1f8c88">${fmt(res.total)}</div>
+  </div>
+  <div style="text-align:right">
+    <div style="margin-bottom:6px"><span style="font-size:11px;color:#4a6358">Prix / kg : </span><span style="font-size:18px;font-weight:700;color:#2da882">${qte > 0 ? (res.total/qte*1000).toFixed(2) : '—'} €</span></div>
+    <div><span style="font-size:11px;color:#4a6358">Prix / portion (${portion}g) : </span><span style="font-size:18px;font-weight:700;color:#67b54b">${qte > 0 ? (res.total/qte*portion).toFixed(2) : '—'} €</span></div>
+  </div>
+</div>
+
+${humainLines ? `<h3>👤 Détail main d'œuvre</h3><table><thead><tr><th>Poste</th><th>Personnes</th><th>Heures</th><th style="text-align:right">Coût</th></tr></thead><tbody>${humainLines}</tbody></table>` : ''}
+${energieLines ? `<h3>⚡ Détail énergie</h3><table><thead><tr><th>Équipement</th><th colspan="2">Durée</th><th style="text-align:right">Coût</th></tr></thead><tbody>${energieLines}</tbody></table>` : ''}
+
+<div style="margin-top:28px;border-top:2px solid #d6e8de;padding-top:16px;display:flex;justify-content:space-between;font-size:10px;color:#8aaa99">
+  <span>EasyNutri — by JaySolution</span>
+  <span>Fiche Décision — ${escHtml(nom)}</span>
+</div>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); }
+  else toast('Autorisez les popups', 'error');
 }
 // ── DÉMARRAGE ──
 (function() {
@@ -3470,7 +3985,7 @@ function importOFFItem(idx) {
       <input id="offSearchInput" class="form-input" type="text"
              placeholder="Ex: farine de blé, lait entier, tomate…"
              oninput="onOFFInput()" autocomplete="off">
-      <div style="font-size:10px;color:var(--text3);margin-top:6px">Source : Open Food Facts (CC BY-SA) · 3M+ produits · Valeurs pour 100g</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">Source : Table Ciqual 2020 — ANSES · Données officielles françaises · Valeurs pour 100g</div>
     </div>
     <div id="offResults" style="overflow-y:auto;flex:1;padding:6px 0">
       <div style="text-align:center;color:var(--text3);padding:40px 0;font-size:13px">Tape au moins 2 caractères pour rechercher</div>
@@ -3680,7 +4195,53 @@ if ('serviceWorker' in navigator) {
 
 })();
 </script>
+<!-- MODAL RESSOURCE -->
+<div class="modal-overlay" id="modalRessource">
+  <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
+    <div class="modal-title">⚙️ Gérer les ressources</div>
 
+    <!-- Humain -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">👤 Main d'œuvre</div>
+      <div id="ressHumainList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="ressHumainNom" placeholder="Ex: Chef cuisinier" style="flex:2">
+        <input class="form-input" id="ressHumainCout" type="number" placeholder="€/h" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="saveRessource('humain')">＋</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Énergie -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">⚡ Énergie / charges</div>
+      <div id="ressEnergieList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="ressEnergieNom" placeholder="Ex: Four, Plaque..." style="flex:2">
+        <input class="form-input" id="ressEnergieCout" type="number" placeholder="€/h" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="saveRessource('energie')">＋</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Emballages -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📦 Emballages</div>
+      <div id="ressEmballageList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="ressEmballageNom" placeholder="Ex: Barquette 250g..." style="flex:2">
+        <input class="form-input" id="ressEmballageCout" type="number" placeholder="€/unité" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="saveRessource('emballage')">＋</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalRessource')">Fermer</button>
+    </div>
+  </div>
+</div>
 <!-- ════════════════════════════════════════
      MODAL PRODUCTION
 ════════════════════════════════════════ -->
@@ -3836,4 +4397,3 @@ if ('serviceWorker' in navigator) {
 
 </body>
 </html>
-
