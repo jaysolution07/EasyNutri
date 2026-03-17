@@ -359,24 +359,20 @@
   }
   .drawer-logout-item:hover { background: rgba(224,92,92,0.07); }
 
-  /* ── TABLET ≤ 1024px ── */
+/* ── TABLET ≤ 1024px ── */
   @media (max-width: 1024px) {
     .grid-2 { grid-template-columns: 1fr; gap: 20px; }
     .nutri-cards { grid-template-columns: repeat(3, 1fr); }
     .card-header .flex { flex-wrap: wrap; gap: 6px; }
     .main { padding: 28px 24px; }
+    #decisionGrid {
+      grid-template-columns: 1fr !important;
+    }
+    #decisionResume {
+      position: relative !important;
+      top: auto !important;
+    }
   }
-#decisionGrid {
-  grid-template-columns: 1fr;
-}
-#decisionGrid > div:last-child {
-  order: -1;
-}
-#decisionResume {
-  position: relative !important;
-  top: auto !important;
-}
-
   /* ── MOBILE ≤ 768px ── */
   @media (max-width: 768px) {
 
@@ -548,8 +544,17 @@
     /* Editor save/cancel */
     #recetteEditor .flex.gap-2.mt-3 .btn { flex: 1; justify-content: center; }
   }
+ /* Decision mobile */
+    #decisionGrid {
+      grid-template-columns: 1fr !important;
+    }
+    #decisionResume {
+      position: relative !important;
+      top: auto !important;
+    }
+  }
 
-  /* ── PETIT MOBILE ≤ 420px ── */
+/* ── PETIT MOBILE ≤ 420px ── */
   @media (max-width: 420px) {
     .nutri-cards { grid-template-columns: repeat(2, 1fr); gap: 6px; }
     .nutri-card .val { font-size: 15px; }
@@ -557,8 +562,14 @@
     #allergenesCheckboxes { grid-template-columns: 1fr 1fr; }
     .ing-row { grid-template-columns: 1fr 68px auto; }
     #fab { width: 52px; height: 52px; font-size: 25px; }
+    #decisionGrid {
+      grid-template-columns: 1fr !important;
+    }
+    #decisionResume {
+      position: relative !important;
+      top: auto !important;
+    }
   }
-
 
   /* ── Bouton retour accueil ── */
   .btn-back-home {
@@ -1307,15 +1318,15 @@ function applyRoleRestrictions() {
   if (isAdmin()) {
     // Ajouter entrée Équipe dans le menu latéral
     const sidebar = document.querySelector('.sidebar');
-    const spacer = sidebar.querySelector('div[style*="flex:1"]');
-    if (spacer && !document.getElementById('nav-equipe')) {
-      const navEquipe = document.createElement('div');
-      navEquipe.id = 'nav-equipe';
-      navEquipe.className = 'nav-item';
-      navEquipe.innerHTML = '<span class="icon">👥</span> Équipe';
-      navEquipe.onclick = () => showUserList();
-      sidebar.insertBefore(navEquipe, spacer);
-    }
+    if (!document.getElementById('nav-equipe')) {
+  const navDecision = document.getElementById('nav-decision');
+  const navEquipe = document.createElement('div');
+  navEquipe.id = 'nav-equipe';
+  navEquipe.className = 'nav-item';
+  navEquipe.innerHTML = '<span class="icon">👥</span> Équipe';
+  navEquipe.onclick = () => showUserList();
+  navDecision.insertAdjacentElement('afterend', navEquipe);
+}
     return;
   }
 
@@ -4103,24 +4114,44 @@ function exportDecisionPdf() {
 </div>
 ${allAllergs.length ? `<div style="background:#fff8e6;border:1.5px solid #f0a500;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:11px"><strong style="color:#7a5000">⚠️ ALLERGÈNES : </strong><span style="color:#7a5000;font-weight:700">${allAllergs.join(' — ')}</span></div>` : ''}
 
-<h3>📊 Valeurs nutritionnelles pour 100 g</h3>
-<table style="width:auto;min-width:380px;margin-bottom:20px">
-  <thead><tr><th>Nutriment</th><th style="text-align:right">Pour 100g</th></tr></thead>
+<h3>📊 Valeurs nutritionnelles</h3>
+<table style="width:auto;min-width:480px;margin-bottom:20px">
+  <thead><tr>
+    <th>Nutriment</th>
+    <th style="text-align:right">Pour 100g</th>
+    <th style="text-align:right">Par portion (${portion}g)</th>
+  </tr></thead>
   <tbody>
-    <tr><td style="padding:6px 10px;border:1px solid #d6e8de">Énergie</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right"><strong>${n100(nutri.kj)} kJ</strong> / ${n100(nutri.kcal)} kcal</td></tr>
-    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Matières grasses</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.lip)} g</td></tr>
-    <tr><td style="padding:6px 10px;border:1px solid #d6e8de;padding-left:20px">dont AGS</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.ags)} g</td></tr>
-    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Glucides</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.gluc)} g</td></tr>
-    <tr><td style="padding:6px 10px;border:1px solid #d6e8de;padding-left:20px">dont Sucres</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.sucres)} g</td></tr>
-    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Fibres</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.fibres)} g</td></tr>
-    <tr><td style="padding:6px 10px;border:1px solid #d6e8de">Protéines</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.prot)} g</td></tr>
-    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Sel</td><td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.sel)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de">Énergie</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right"><strong>${n100(nutri.kj)} kJ</strong> / ${n100(nutri.kcal)} kcal</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;color:#1f8c88"><strong>${(parseFloat(n100(nutri.kj))*portion/100).toFixed(1)} kJ</strong> / ${(parseFloat(n100(nutri.kcal))*portion/100).toFixed(1)} kcal</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Matières grasses</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.lip)} g</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;color:#1f8c88">${(parseFloat(n100(nutri.lip))*portion/100).toFixed(1)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de;padding-left:20px">dont AGS</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.ags)} g</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;color:#1f8c88">${(parseFloat(n100(nutri.ags))*portion/100).toFixed(1)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Glucides</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.gluc)} g</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;color:#1f8c88">${(parseFloat(n100(nutri.gluc))*portion/100).toFixed(1)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de;padding-left:20px">dont Sucres</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.sucres)} g</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;color:#1f8c88">${(parseFloat(n100(nutri.sucres))*portion/100).toFixed(1)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Fibres</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.fibres)} g</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;color:#1f8c88">${(parseFloat(n100(nutri.fibres))*portion/100).toFixed(1)} g</td></tr>
+    <tr><td style="padding:6px 10px;border:1px solid #d6e8de">Protéines</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.prot)} g</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;color:#1f8c88">${(parseFloat(n100(nutri.prot))*portion/100).toFixed(1)} g</td></tr>
+    <tr style="background:#f7faf8"><td style="padding:6px 10px;border:1px solid #d6e8de">Sel</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right">${n100(nutri.sel)} g</td>
+      <td style="padding:6px 10px;border:1px solid #d6e8de;text-align:right;color:#1f8c88">${(parseFloat(n100(nutri.sel))*portion/100).toFixed(1)} g</td></tr>
   </tbody>
 </table>
 
 <h3>💰 Calcul du coût net de revient</h3>
 <table style="margin-bottom:8px">
-  <thead><tr><th>Poste</th><th style="text-align:right">Montant</th></tr></thead>
+  <thead><tr><th>Detail</th><th style="text-align:right">Montant</th></tr></thead>
   <tbody>
     <tr><td style="padding:7px 10px;border:1px solid #d6e8de">🥦 Matière première (${qte}g)</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutMatiere)}</td></tr>
     <tr style="background:#f7faf8"><td style="padding:7px 10px;border:1px solid #d6e8de">👤 Main d'œuvre</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutHumain)}</td></tr>
