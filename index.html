@@ -366,6 +366,16 @@
     .card-header .flex { flex-wrap: wrap; gap: 6px; }
     .main { padding: 28px 24px; }
   }
+#decisionGrid {
+  grid-template-columns: 1fr;
+}
+#decisionGrid > div:last-child {
+  order: -1;
+}
+#decisionResume {
+  position: relative !important;
+  top: auto !important;
+}
 
   /* ── MOBILE ≤ 768px ── */
   @media (max-width: 768px) {
@@ -905,8 +915,7 @@
   </div>
 
   <div id="decisionContent" style="display:none">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
-
+<div id="decisionGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
       <!-- Colonne gauche : charges -->
       <div style="display:flex;flex-direction:column;gap:16px">
 
@@ -959,7 +968,7 @@
 
       <!-- Colonne droite : résumé -->
       <div style="display:flex;flex-direction:column;gap:16px">
-        <div class="card" style="position:sticky;top:88px">
+        <div class="card" id="decisionResume" style="position:sticky;top:88px">
           <div class="accent-bar"></div>
           <div class="card-header">
             <div class="card-title">💰 Coût net de revient</div>
