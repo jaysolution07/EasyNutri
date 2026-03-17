@@ -1211,7 +1211,12 @@ let CATEGORIES = [];           // noms triés
 let CATEGORIES_DATA = [];      // objets complets {id, nom, actif} depuis le Sheets
 let activeCatFilter = '';
 const RECETTE_SUBS = {};
-
+function isAdmin() {
+  return localStorage.getItem('easynutri_role') === 'admin';
+}
+function getEntreprise() {
+  return localStorage.getItem('easynutri_entreprise') || '';
+}
 // ── SPLASH ──
 function splashProgress(pct, msg) {
   document.getElementById('splashBar').style.width = pct + '%';
@@ -1259,10 +1264,29 @@ async function init() {
     renderIngredientsList(); renderFournisseursList();await      loadRessources();
     await loadRecettes();
 
-    splashProgress(100, 'Prêt !');
+  splashProgress(100, 'Prêt !');
     document.getElementById('statusDot').className = 'badge badge-green';
     document.getElementById('statusDot').textContent = '🟢 Connecté';
-    setTimeout(() => { hideSplash(); showPage('accueil'); }, 400);
+    setTimeout(() => {
+      hideSplash();
+      applyRoleRestrictions();
+    if (isAdmin()) {
+        const cards = document.querySelector('.home-cards');
+        if (cards && !document.getElementById('homeCardEquipe')) {
+          const card = document.createElement('div');
+          card.className = 'home-card';
+          card.id = 'homeCardEquipe';
+          card.innerHTML = `
+            <div class="home-card-icon">👥</div>
+            <div class="home-card-title">Équipe</div>
+            <div class="home-card-desc">Gérez les accès de vos collaborateurs</div>
+            <div class="home-card-arrow">→</div>`;
+          card.addEventListener('click', () => showUserList());
+          cards.appendChild(card);
+        }
+      }
+      showPage('accueil');
+    }, 400);
   } catch(e) {
     splashProgress(100, 'Erreur de connexion');
     document.getElementById('splashMsg').style.color = 'var(--danger)';
@@ -1270,7 +1294,36 @@ async function init() {
     setTimeout(hideSplash, 2000);
   }
 }
+function applyRoleRestrictions() {
+  if (isAdmin()) {
+    // Ajouter entrée Équipe dans le menu latéral
+    const sidebar = document.querySelector('.sidebar');
+    const spacer = sidebar.querySelector('div[style*="flex:1"]');
+    if (spacer && !document.getElementById('nav-equipe')) {
+      const navEquipe = document.createElement('div');
+      navEquipe.id = 'nav-equipe';
+      navEquipe.className = 'nav-item';
+      navEquipe.innerHTML = '<span class="icon">👥</span> Équipe';
+      navEquipe.onclick = () => showUserList();
+      sidebar.insertBefore(navEquipe, spacer);
+    }
+    return;
+  }
 
+  // Masquer les boutons admin pour les employés
+  [
+    '[onclick="openModalIngredient()"]',
+    '[onclick="openModalFournisseur()"]',
+    '[onclick="openModalRecette()"]',
+    '[onclick="openModalCategories()"]',
+    '#nav-decision',
+  ].forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => el.style.display = 'none');
+  });
+
+  const btnDanger = document.querySelector('.btn-danger[onclick="removeRecette()"]');
+  if (btnDanger) btnDanger.style.display = 'none';
+}
 // ── CATEGORIES — chargement depuis API ──
 async function loadCategories() {
   try {
@@ -3374,16 +3427,19 @@ async function doLogin() {
       btn.classList.remove('loading'); btn.innerHTML = 'Se connecter'; btn.disabled = false;
       return;
     }
-    localStorage.setItem('easynutri_api', data.webapp_url);
-localStorage.setItem('easynutri_user', email);
-localStorage.setItem('easynutri_last_active', Date.now());
+    const displayName = data.nom || email.split('@')[0];
+    localStorage.setItem('easynutri_api',        data.webapp_url);
+    localStorage.setItem('easynutri_user',        email);
+    localStorage.setItem('easynutri_last_active', Date.now());
+    localStorage.setItem('easynutri_role',        data.role       || 'employe');
+    localStorage.setItem('easynutri_entreprise',  data.entreprise || '');
+    localStorage.setItem('easynutri_nom',         displayName);
     API = data.webapp_url;
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('userLabel').textContent = email;
     document.getElementById('userLabel').style.display = 'inline';
-    const firstName = email.split('@')[0].split('.')[0];
     const greet = document.getElementById('homeGreeting');
-    if (greet) greet.textContent = 'Bonjour ' + firstName.charAt(0).toUpperCase() + firstName.slice(1) + ' 👋';
+    if (greet) greet.textContent = 'Bonjour ' + displayName + ' 👋';
     document.getElementById('btnLogout').style.display = 'inline-flex';
     init();
   } catch(e) {
@@ -3392,11 +3448,140 @@ localStorage.setItem('easynutri_last_active', Date.now());
     btn.classList.remove('loading'); btn.innerHTML = 'Se connecter'; btn.disabled = false;
   }
 }
+function openModalCreateUser() {
+  ['newUserNom','newUserEmail','newUserMdp'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('newUserRole').value = 'employe';
+  openModal('modalCreateUser');
+}
 
+let _editUserEmail = null; // null = création, sinon = email en cours d'édition
+
+function openModalCreateUser(editEmail) {
+  _editUserEmail = editEmail || null;
+  ['newUserNom','newUserEmail','newUserMdp'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('newUserRole').value = 'employe';
+  document.getElementById('newUserEmail').disabled = !!editEmail;
+  document.getElementById('newUserMdp').placeholder = editEmail 
+    ? 'Laisser vide pour ne pas changer' 
+    : 'Ex: Cuisine2025';
+
+  if (editEmail) {
+    // Charger la liste pour trouver les infos
+    loadUserList().then(users => {
+      const u = users.find(x => x.email === editEmail);
+      if (u) {
+        document.getElementById('newUserNom').value  = u.nom  || '';
+        document.getElementById('newUserEmail').value = u.email || '';
+        document.getElementById('newUserRole').value = u.role || 'employe';
+      }
+    });
+    document.querySelector('#modalCreateUser .modal-title').textContent = '✏️ Modifier l\'utilisateur';
+    document.getElementById('btnDeleteUser').style.display = 'inline-flex';
+  } else {
+    document.querySelector('#modalCreateUser .modal-title').textContent = '👥 Nouvel utilisateur';
+    document.getElementById('btnDeleteUser').style.display = 'none';
+  }
+  openModal('modalCreateUser');
+}
+
+async function loadUserList() {
+  try {
+    const r = await fetch(MASTER_API + '?action=listUsers&webapp_url=' + encodeURIComponent(API));
+    return await r.json();
+  } catch(e) { return []; }
+}
+
+async function createUser() {
+  const nom   = document.getElementById('newUserNom').value.trim();
+  const email = document.getElementById('newUserEmail').value.trim();
+  const mdp   = document.getElementById('newUserMdp').value.trim();
+  const role  = document.getElementById('newUserRole').value;
+
+  if (_editUserEmail) {
+    // MODE ÉDITION
+    if (!nom) { toast('Entrez un nom', 'error'); return; }
+    const btn = document.querySelector('#modalCreateUser .btn-primary');
+    btnLoading(btn, true);
+    try {
+      const r = await fetch(MASTER_API, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'updateUser', email: _editUserEmail, nom, mdp: mdp || null, role })
+      });
+      const data = await r.json();
+      if (data.ok) { toast('Utilisateur modifié ✓', 'success'); closeModal('modalCreateUser'); showUserList(); }
+      else toast(data.message || 'Erreur', 'error');
+    } catch(e) { toast('Erreur réseau', 'error'); }
+    btnLoading(document.querySelector('#modalCreateUser .btn-primary'), false);
+  } else {
+    // MODE CRÉATION
+    if (!nom || !email || !mdp) { toast('Tous les champs sont requis', 'error'); return; }
+    const btn = document.querySelector('#modalCreateUser .btn-primary');
+    btnLoading(btn, true);
+    try {
+      const r = await fetch(MASTER_API, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'createUser', nom, email, mdp, role, webapp_url: API, entreprise: getEntreprise() })
+      });
+      const data = await r.json();
+      if (data.ok) { toast('Utilisateur créé ✓', 'success'); closeModal('modalCreateUser'); showUserList(); }
+      else toast(data.message || 'Erreur', 'error');
+    } catch(e) { toast('Erreur réseau', 'error'); }
+    btnLoading(document.querySelector('#modalCreateUser .btn-primary'), false);
+  }
+}
+
+async function deleteUser() {
+  if (!_editUserEmail) return;
+  if (!confirm('Supprimer ' + _editUserEmail + ' ?')) return;
+  const btn = document.getElementById('btnDeleteUser');
+  btnLoading(btn, true);
+  try {
+    const r = await fetch(MASTER_API, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'deleteUser', email: _editUserEmail })
+    });
+    const data = await r.json();
+    if (data.ok) { toast('Utilisateur supprimé', 'success'); closeModal('modalCreateUser'); showUserList(); }
+    else toast(data.message || 'Erreur', 'error');
+  } catch(e) { toast('Erreur réseau', 'error'); }
+  btnLoading(btn, false);
+}
+
+async function showUserList() {
+  openModal('modalUserList');
+  document.getElementById('userListBody').innerHTML = `
+    <div class="skel-spinner-wrap"><div class="skel-spinner"></div>
+    <div class="skel-spinner-label">Chargement…</div></div>`;
+  const users = await loadUserList();
+  const currentEmail = localStorage.getItem('easynutri_user');
+  if (!users.length) {
+    document.getElementById('userListBody').innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">Aucun utilisateur trouvé</div>';
+    return;
+  }
+  document.getElementById('userListBody').innerHTML = users.map(u => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:13px">${escHtml(u.nom)}</div>
+        <div style="font-size:11px;color:var(--text3)">${escHtml(u.email)}</div>
+      </div>
+      <span class="badge ${u.role==='admin'?'badge-blue':'badge-green'}">${u.role==='admin'?'👑 Admin':'👷 Employé'}</span>
+      ${u.email !== currentEmail 
+        ? `<button class="btn btn-secondary btn-sm" onclick="closeModal('modalUserList');openModalCreateUser('${escHtml(u.email)}')">✏️</button>` 
+        : '<span style="font-size:11px;color:var(--text3)">Vous</span>'}
+    </div>`).join('');
+}
 function logout() {
   if (!confirm('Se déconnecter ?')) return;
   localStorage.removeItem('easynutri_api');
   localStorage.removeItem('easynutri_user');
+  localStorage.removeItem('easynutri_last_active');
+  localStorage.removeItem('easynutri_nom');
+  localStorage.removeItem('easynutri_role');
+  localStorage.removeItem('easynutri_entreprise');
   location.reload();
 }
 // ════════════════════════════════════════════
@@ -3979,17 +4164,20 @@ ${energieLines ? `<h3>⚡ Détail énergie</h3><table><thead><tr><th>Équipement
     return;
   }
 
-  if (savedApi) {
-    API = savedApi;
-    localStorage.setItem('easynutri_last_active', Date.now()); // renouveler au démarrage
-    document.getElementById('loginPage').style.display = 'none';
-    if (savedUser) {
-      document.getElementById('userLabel').textContent = savedUser;
-      document.getElementById('userLabel').style.display = 'inline';
-    }
-    document.getElementById('btnLogout').style.display = 'inline-flex';
-    init();
+if (savedApi) {
+  API = savedApi;
+  localStorage.setItem('easynutri_last_active', Date.now());
+  document.getElementById('loginPage').style.display = 'none';
+  if (savedUser) {
+    document.getElementById('userLabel').textContent = savedUser;
+    document.getElementById('userLabel').style.display = 'inline';
   }
+  const savedNom = localStorage.getItem('easynutri_nom');
+  const greet = document.getElementById('homeGreeting');
+  if (greet && savedNom) greet.textContent = 'Bonjour ' + savedNom + ' 👋';
+  document.getElementById('btnLogout').style.display = 'inline-flex';
+  init();
+}
 })();
 // Renouveler l'activité à chaque interaction utilisateur
 (function() {
@@ -4428,6 +4616,48 @@ if ('serviceWorker' in navigator) {
 
   </div>
 </div>
+<div class="modal-overlay" id="modalUserList">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title">👥 Gestion de l'équipe</div>
+    <div id="userListBody" style="margin-bottom:16px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modalUserList')">Fermer</button>
+      <button class="btn btn-primary" onclick="closeModal('modalUserList');openModalCreateUser()">＋ Ajouter</button>
+    </div>
+  </div>
+</div>
 
+<div class="modal-overlay" id="modalCreateUser">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title">👥 Nouvel utilisateur</div>
+    <div class="form-group">
+      <label class="form-label">Nom complet</label>
+      <input class="form-input" id="newUserNom" placeholder="Ex: Marie Dupont">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="newUserEmail" type="email" placeholder="marie@cuisine.fr">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe</label>
+      <input class="form-input" id="newUserMdp" type="text" placeholder="Ex: Cuisine2025">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Rôle</label>
+      <select class="form-select" id="newUserRole">
+        <option value="employe">👷 Employé — consultation + production</option>
+        <option value="admin">👑 Admin — accès complet</option>
+      </select>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:11.5px;color:var(--text3);margin-bottom:4px">
+      Ce compte aura accès aux mêmes données que votre établissement.
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" id="btnDeleteUser" style="display:none;margin-right:auto" onclick="deleteUser()">🗑️ Supprimer</button>
+      <button class="btn btn-secondary" onclick="closeModal('modalCreateUser')">Annuler</button>
+      <button class="btn btn-primary" onclick="createUser()">Sauvegarder</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
