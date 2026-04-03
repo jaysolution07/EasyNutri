@@ -11,6 +11,8 @@
 <meta name="theme-color" content="#1f8c88">
 <meta name="mobile-web-app-capable" content="yes">
 <title>EasyNutri</title>
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -969,23 +971,6 @@
           </div>
         </div>
 
-  <div class="card">
-    <div class="card-body">
-      <div id="planningList"></div>
-    </div>
-  </div>
-</div>
-<!-- PAGE PLANNING -->
-<div id="pagePlanning" style="display:none">
-  <div class="page-header">
-    <div>
-      <button class="btn-back-home" onclick="showPage('accueil')">← Accueil</button>
-      <div class="page-title">Mon <span>Planning</span></div>
-      <div class="text-sm text-muted mt-2">Organisation semaine et production</div>
-    </div>
-    <button class="btn btn-primary" onclick="openModalPlanning()">＋ Nouvelle tâche</button>
-  </div>
-
 <!-- Emballage -->
 <div class="card">
   <div class="card-header">
@@ -1060,6 +1045,7 @@
     </div>
   </div>
 </div>
+<!-- PAGE PLANNING -->
 <div id="pagePlanning" style="display:none">
   <div class="page-header">
     <div>
@@ -1072,13 +1058,11 @@
 
   <div class="card">
     <div class="card-body">
-      <div id="planningList"></div>
+      <div id="planningCalendar"></div>
     </div>
   </div>
 </div>
   </main>
-</div>
-
 
 <!-- MODAL RECETTE -->
 <div class="modal-overlay" id="modalRecette">
@@ -1566,8 +1550,20 @@ function showPage(p) {
     if (nav) nav.classList.toggle('active', p === name);
   });
 
-  if (p === 'decision') showDecisionPage();
-  if (p === 'planning') loadPlanning();
+  if (p === 'decision') {
+    showDecisionPage();
+  }
+
+  if (p === 'planning') {
+    setTimeout(() => {
+      if (!planningCalendar) {
+        initPlanningCalendar();
+      }
+      loadPlanningCalendar();
+    }, 100);
+  }
+
+  window.scrollTo(0, 0);
 }
 
 // ── FOURNISSEURS ──
@@ -4296,6 +4292,44 @@ if (savedApi) {
     }, { passive: true });
   });
 })();
+async function savePlanningTaskRemote() {
+  const date = document.getElementById('planDate').value;
+  const heure = document.getElementById('planHeure').value;
+  const type = document.getElementById('planType').value;
+  const titre = document.getElementById('planTitre').value.trim();
+
+  if (!date || !titre) {
+    toast('Renseigne au minimum la date et le titre', 'error');
+    return;
+  }
+
+  try {
+    const modal = document.getElementById('modalPlanning');
+    const editId = modal?.dataset.editId || '';
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'savePlanning',
+        id: editId,
+        date,
+        heure,
+        type,
+        titre
+      })
+    });
+
+    if (!r.ok) throw new Error('Impossible de sauvegarder la tache');
+
+    closeModalPlanning();
+    await loadPlanningCalendar();
+    toast('Tache ajoutee ✓', 'success');
+  } catch (e) {
+    console.error('Erreur sauvegarde planning', e);
+    toast("Impossible d'enregistrer la tache", 'error');
+  }
+}
+savePlanningTask = savePlanningTaskRemote;
 </script>
 <!-- MODAL IMPORT OPEN FOOD FACTS -->
 <div class="modal-overlay" id="modalImportOFF">
@@ -4517,12 +4551,89 @@ if ('serviceWorker' in navigator) {
   });
 
 })();
-let PLANNING = [];
-
-function loadPlanning() {
-  renderPlanning();
+async function apiGet(action) {
+  try {
+    const r = await fetch(API + '?action=' + encodeURIComponent(action));
+    if (!r.ok) throw new Error('Erreur API');
+    return await r.json();
+  } catch (e) {
+    console.error('apiGet error:', e);
+    return [];
+  }
 }
+let planningCalendar = null
 
+function initPlanningCalendar() {
+  const calendarEl = document.getElementById('planningCalendar')
+  if (!calendarEl) return
+
+  planningCalendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'timeGridWeek',
+    locale: 'fr',
+    firstDay: 1,
+    nowIndicator: true,
+   slotMinTime: '05:00:00',
+slotMaxTime: '23:59:00',
+scrollTime: '08:00:00',
+    allDaySlot: false,
+    expandRows: true,
+    height: 'auto',
+
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'timeGridDay,timeGridWeek,dayGridMonth'
+    },
+
+    buttonText: {
+      today: "Aujourd'hui",
+      day: "Jour",
+      week: "Semaine",
+      month: "Mois"
+    },
+
+    events: [],
+
+    eventClick(info) {
+      const item = info.event.extendedProps.raw
+      openModalPlanning(item)
+    }
+  })
+
+  planningCalendar.render()
+}
+async function loadPlanningCalendar() {
+  const data = await apiGet('planning');
+
+  const events = data.map(item => {
+    const date = String(item.date).slice(0, 10);
+
+    let heure = String(item.heure || '00:00').trim();
+
+    // si Sheets renvoie une date ISO bizarre
+    if (heure.includes('T')) {
+      heure = heure.substring(11, 16);
+    }
+
+    // si déjà format HH:mm on garde tel quel
+    if (/^\d{1,2}:\d{2}$/.test(heure)) {
+      heure = heure.padStart(5, '0');
+    }
+
+    return {
+      id: item.id,
+      title: `${item.type} - ${item.titre}`,
+      start: `${date}T${heure}:00`,
+      allDay: false,
+      extendedProps: {
+        raw: item
+      }
+    };
+  });
+
+  planningCalendar.removeAllEvents();
+  planningCalendar.addEventSource(events);
+}
 function renderPlanning() {
   const box = document.getElementById('planningList');
   if (!PLANNING.length) {
@@ -4545,19 +4656,41 @@ function renderPlanning() {
   `).join('');
 }
 
-function openModalPlanning() {
-  document.getElementById('planDate').value = '';
-  document.getElementById('planHeure').value = '';
-  document.getElementById('planType').value = 'Production';
-  document.getElementById('planTitre').value = '';
-  document.getElementById('modalPlanning').classList.add('open');
-}
+function openModalPlanning(item = null) {
+  const modal = document.getElementById('modalPlanning')
+  if (!modal) return
 
+  modal.classList.add('open')
+
+  const dateInput = document.getElementById('planDate')
+  const heureInput = document.getElementById('planHeure')
+  const typeInput = document.getElementById('planType')
+  const titreInput = document.getElementById('planTitre')
+
+  modal.dataset.editId = item ? item.id : ''
+
+  const title = modal.querySelector('.modal-title')
+  if (title) {
+    title.textContent = item ? '✏️ Modifier la tâche' : '📅 Tâche planning'
+  }
+
+  if (item) {
+    dateInput.value = item.date || ''
+    heureInput.value = item.heure || ''
+    typeInput.value = item.type || 'Production'
+    titreInput.value = item.titre || ''
+  } else {
+    dateInput.value = ''
+    heureInput.value = ''
+    typeInput.value = 'Production'
+    titreInput.value = ''
+  }
+}
 function closeModalPlanning() {
   document.getElementById('modalPlanning').classList.remove('open');
 }
 
-function savePlanningTask() {
+function savePlanningTaskOld() {
   PLANNING.push({
     date: document.getElementById('planDate').value,
     heure: document.getElementById('planHeure').value,
