@@ -1045,6 +1045,12 @@
           <div class="home-card-desc">Calculez le coût net de revient avec toutes vos charges</div>
           <div class="home-card-arrow">→</div>
         </div>
+        <div class="home-card" onclick="showPage('planning')">
+          <div class="home-card-icon">📅</div>
+          <div class="home-card-title">Planning</div>
+          <div class="home-card-desc">Planifiez la production et organisez les tâches de la semaine</div>
+          <div class="home-card-arrow">→</div>
+        </div>
       </div>
     </div>
 
@@ -1299,6 +1305,10 @@
                 <span style="font-size:14px;font-weight:700;color:var(--text)">Total net</span>
                 <span style="font-family:'DM Serif Display',serif;font-size:26px;color:var(--g3)" id="sumTotal">0,00 €</span>
               </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;background:linear-gradient(135deg,rgba(240,165,0,0.10),rgba(224,124,32,0.10));border-radius:10px;padding:14px 16px">
+                <span style="font-size:14px;font-weight:700;color:var(--text)">Prix de vente conseillé</span>
+                <span style="font-family:'DM Serif Display',serif;font-size:26px;color:#e07c20" id="sumPrixVente">0,00 €</span>
+              </div>
             </div>
 
             <!-- Indicateurs par kg / par portion -->
@@ -1314,11 +1324,28 @@
                 <div class="lbl">Coût / portion</div>
               </div>
             </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+              <div class="nutri-card" style="border-color:rgba(240,165,0,0.35);background:linear-gradient(135deg,rgba(255,248,230,0.9),rgba(255,243,224,0.92))">
+                <div class="val" id="prixVenteParKg" style="font-size:18px;color:#e07c20">—</div>
+                <div class="unit">€/kg</div>
+                <div class="lbl">Prix de vente / kg</div>
+              </div>
+              <div class="nutri-card" style="border-color:rgba(240,165,0,0.35);background:linear-gradient(135deg,rgba(255,248,230,0.9),rgba(255,243,224,0.92))">
+                <div class="val" id="prixVenteParPortion" style="font-size:18px;color:#e07c20">—</div>
+                <div class="unit">€/portion</div>
+                <div class="lbl">Prix de vente / portion</div>
+              </div>
+            </div>
 
             <!-- Taille de portion -->
             <div class="form-group" style="margin-bottom:16px">
               <label class="form-label">Taille d'une portion (g)</label>
               <input class="form-input" id="decisionPortion" type="number" placeholder="100" value="100" oninput="calcDecision()">
+            </div>
+            <div class="form-group" style="margin-bottom:16px">
+              <label class="form-label">Marge commerciale (%)</label>
+              <input class="form-input" id="decisionMarge" type="number" placeholder="30" value="30" min="0" step="0.1" oninput="calcDecision()">
+              <div style="margin-top:6px;font-size:11px;color:var(--text3)">Le prix de vente est calculé à partir du coût net total et de la marge saisie.</div>
             </div>
 
             <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="exportDecisionPdf()">
@@ -4355,6 +4382,12 @@ function calcDecision() {
 
   const total = coutMatiere + coutHumain + coutEnergie + coutEmballage;
   const portion = parseFloat(document.getElementById('decisionPortion').value) || 100;
+  const marge = Math.max(0, parseFloat(document.getElementById('decisionMarge')?.value) || 0);
+  const prixVenteTotal = total * (1 + marge / 100);
+  const coutParKg = qte > 0 ? (total / qte * 1000) : 0;
+  const coutParPortion = qte > 0 ? (total / qte * portion) : 0;
+  const prixVenteParKg = qte > 0 ? (prixVenteTotal / qte * 1000) : 0;
+  const prixVenteParPortion = qte > 0 ? (prixVenteTotal / qte * portion) : 0;
 
   // Affichage
   const fmt = v => v.toFixed(2) + ' €';
@@ -4367,8 +4400,11 @@ function calcDecision() {
   document.getElementById('sumEnergie').textContent   = fmt(coutEnergie);
   document.getElementById('sumEmballage').textContent = fmt(coutEmballage);
   document.getElementById('sumTotal').textContent     = fmt(total);
-  document.getElementById('coutParKg').textContent    = qte > 0 ? (total / qte * 1000).toFixed(2) : '—';
-  document.getElementById('coutParPortion').textContent = qte > 0 ? (total / qte * portion).toFixed(2) : '—';
+  document.getElementById('sumPrixVente').textContent = fmt(prixVenteTotal);
+  document.getElementById('coutParKg').textContent    = qte > 0 ? coutParKg.toFixed(2) : '—';
+  document.getElementById('coutParPortion').textContent = qte > 0 ? coutParPortion.toFixed(2) : '—';
+  document.getElementById('prixVenteParKg').textContent = qte > 0 ? prixVenteParKg.toFixed(2) : '—';
+  document.getElementById('prixVenteParPortion').textContent = qte > 0 ? prixVenteParPortion.toFixed(2) : '—';
 
   // Détail matière
   const detEl = document.getElementById('decisionMatiereDetail');
@@ -4383,7 +4419,12 @@ function calcDecision() {
   }
 
   // Stocker pour PDF
-  window._decisionResult = { coutMatiere, coutHumain, coutEnergie, coutEmballage, total, qte, ratio, portion, matiereLines };
+  window._decisionResult = {
+    coutMatiere, coutHumain, coutEnergie, coutEmballage,
+    total, qte, ratio, portion, marge, prixVenteTotal,
+    coutParKg, coutParPortion, prixVenteParKg, prixVenteParPortion,
+    matiereLines
+  };
 }
 
 // ── Export PDF complet ──
@@ -4397,6 +4438,7 @@ function exportDecisionPdf() {
   const nom = recObj.nom;
   const qte = res.qte || 1000;
   const portion = res.portion || 100;
+  const marge = res.marge || 0;
 
   // Calcul nutri
   let nutri = { kj:0, kcal:0, prot:0, gluc:0, sucres:0, lip:0, ags:0, sel:0, fibres:0 };
@@ -4529,17 +4571,29 @@ ${allAllergs.length ? `<div style="background:#fff8e6;border:1.5px solid #f0a500
     <tr style="background:#f7faf8"><td style="padding:7px 10px;border:1px solid #d6e8de">👤 Main d'œuvre</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutHumain)}</td></tr>
     <tr><td style="padding:7px 10px;border:1px solid #d6e8de">⚡ Énergie / charges</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutEnergie)}</td></tr>
     <tr style="background:#f7faf8"><td style="padding:7px 10px;border:1px solid #d6e8de">📦 Emballage (${escHtml(embNom)})</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600">${fmt(res.coutEmballage)}</td></tr>
+    <tr><td style="padding:7px 10px;border:1px solid #d6e8de">Marge commerciale (${marge.toFixed(1)}%)</td><td style="padding:7px 10px;border:1px solid #d6e8de;text-align:right;font-weight:600;color:#e07c20">${fmt((res.prixVenteTotal || 0) - (res.total || 0))}</td></tr>
   </tbody>
 </table>
 
-<div style="background:linear-gradient(135deg,rgba(103,181,75,0.1),rgba(31,140,136,0.1));border:2px solid #2da882;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+<div style="background:linear-gradient(135deg,rgba(103,181,75,0.08),rgba(31,140,136,0.08));border:2px solid #2da882;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
   <div>
-    <div style="font-size:11px;color:#4a6358;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px">Coût net total (${qte}g)</div>
-    <div style="font-size:28px;font-weight:700;color:#1f8c88">${fmt(res.total)}</div>
+    <div style="font-size:10px;color:#4a6358;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:1px">Coût net total (${qte}g)</div>
+    <div style="font-size:22px;font-weight:700;color:#1f8c88;line-height:1.1">${fmt(res.total)}</div>
   </div>
   <div style="text-align:right">
-    <div style="margin-bottom:6px"><span style="font-size:11px;color:#4a6358">Prix / kg : </span><span style="font-size:18px;font-weight:700;color:#2da882">${qte > 0 ? (res.total/qte*1000).toFixed(2) : '—'} €</span></div>
-    <div><span style="font-size:11px;color:#4a6358">Prix / portion (${portion}g) : </span><span style="font-size:18px;font-weight:700;color:#67b54b">${qte > 0 ? (res.total/qte*portion).toFixed(2) : '—'} €</span></div>
+    <div style="margin-bottom:3px"><span style="font-size:10px;color:#4a6358">Coût / kg : </span><span style="font-size:15px;font-weight:700;color:#2da882">${qte > 0 ? (res.coutParKg || 0).toFixed(2) : '—'} €</span></div>
+    <div><span style="font-size:10px;color:#4a6358">Coût / portion (${portion}g) : </span><span style="font-size:15px;font-weight:700;color:#67b54b">${qte > 0 ? (res.coutParPortion || 0).toFixed(2) : '—'} €</span></div>
+  </div>
+</div>
+
+<div style="background:linear-gradient(135deg,rgba(255,248,230,0.92),rgba(255,243,224,0.92));border:2px solid #f0a500;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+  <div>
+    <div style="font-size:10px;color:#8a5b00;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:1px">Prix de vente avec marge ${marge.toFixed(1)}%</div>
+    <div style="font-size:22px;font-weight:700;color:#e07c20;line-height:1.1">${fmt(res.prixVenteTotal || 0)}</div>
+  </div>
+  <div style="text-align:right">
+    <div style="margin-bottom:3px"><span style="font-size:10px;color:#8a5b00">Prix / kg : </span><span style="font-size:15px;font-weight:700;color:#e07c20">${qte > 0 ? (res.prixVenteParKg || 0).toFixed(2) : '—'} €</span></div>
+    <div><span style="font-size:10px;color:#8a5b00">Prix / portion (${portion}g) : </span><span style="font-size:15px;font-weight:700;color:#d97706">${qte > 0 ? (res.prixVenteParPortion || 0).toFixed(2) : '—'} €</span></div>
   </div>
 </div>
 
