@@ -1039,13 +1039,13 @@
           <div class="home-card-desc">Suivez vos fournisseurs, contacts et agréments</div>
           <div class="home-card-arrow">→</div>
         </div>
-        <div class="home-card" onclick="showPage('decision')">
+        <div class="home-card" id="home-card-decision" onclick="showPage('decision')">
           <div class="home-card-icon">📊</div>
           <div class="home-card-title">Décision</div>
           <div class="home-card-desc">Calculez le coût net de revient avec toutes vos charges</div>
           <div class="home-card-arrow">→</div>
         </div>
-        <div class="home-card" onclick="showPage('planning')">
+        <div class="home-card" id="home-card-planning" onclick="showPage('planning')">
           <div class="home-card-icon">📅</div>
           <div class="home-card-title">Planning</div>
           <div class="home-card-desc">Planifiez la production et organisez les tâches de la semaine</div>
@@ -1600,6 +1600,26 @@ function getEntreprise() {
   return localStorage.getItem('easynutri_entreprise') || '';
 }
 // ── SPLASH ──
+function getAbonnement() {
+  return Number(localStorage.getItem('easynutri_abonnement') || 1);
+}
+function hasModuleAccess(moduleName) {
+  const abo = getAbonnement();
+  switch (moduleName) {
+    case 'accueil':
+    case 'recettes':
+    case 'ingredients':
+    case 'fournisseurs':
+      return true;
+    case 'equipe':
+      return isAdmin() && abo >= 2;
+    case 'decision':
+    case 'planning':
+      return abo >= 3;
+    default:
+      return false;
+  }
+}
 function splashProgress(pct, msg) {
   document.getElementById('splashBar').style.width = pct + '%';
   document.getElementById('splashMsg').textContent = msg;
@@ -1652,7 +1672,8 @@ async function init() {
     setTimeout(() => {
       hideSplash();
       applyRoleRestrictions();
-    if (isAdmin()) {
+      applyAbonnementRestrictions();
+    if (hasModuleAccess('equipe')) {
         const cards = document.querySelector('.home-cards');
         if (cards && !document.getElementById('homeCardEquipe')) {
           const card = document.createElement('div');
@@ -1677,7 +1698,7 @@ async function init() {
   }
 }
 function applyRoleRestrictions() {
-  if (isAdmin()) {
+  if (hasModuleAccess('equipe')) {
     // Ajouter entrée Équipe dans le menu latéral
     const sidebar = document.querySelector('.sidebar');
     if (!document.getElementById('nav-equipe')) {
@@ -1698,13 +1719,32 @@ function applyRoleRestrictions() {
     '[onclick="openModalFournisseur()"]',
     '[onclick="openModalRecette()"]',
     '[onclick="openModalCategories()"]',
-    '#nav-decision',
   ].forEach(sel => {
     document.querySelectorAll(sel).forEach(el => el.style.display = 'none');
   });
 
   const btnDanger = document.querySelector('.btn-danger[onclick="removeRecette()"]');
   if (btnDanger) btnDanger.style.display = 'none';
+}
+function applyAbonnementRestrictions() {
+  const navDecision = document.getElementById('nav-decision');
+  const navPlanning = document.getElementById('nav-planning');
+  const navEquipe = document.getElementById('nav-equipe');
+
+  const homeDecision = document.getElementById('home-card-decision');
+  const homePlanning = document.getElementById('home-card-planning');
+  const homeEquipe = document.getElementById('homeCardEquipe');
+  const btnPlanifier = document.querySelector('[onclick="openPlanningFromCurrentRecette()"]');
+
+  if (navDecision) navDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
+  if (navPlanning) navPlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
+  if (navEquipe) navEquipe.style.display = hasModuleAccess('equipe') ? '' : 'none';
+
+  if (homeDecision) homeDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
+  if (homePlanning) homePlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
+  if (homeEquipe) homeEquipe.style.display = hasModuleAccess('equipe') ? '' : 'none';
+
+  if (btnPlanifier) btnPlanifier.style.display = hasModuleAccess('planning') ? '' : 'none';
 }
 // ── CATEGORIES — chargement depuis API ──
 async function loadCategories() {
@@ -1882,6 +1922,11 @@ async function deleteCategorie(i) {
 // ── PAGES ──
 // ── PAGES ──
 function showPage(p) {
+  if (!hasModuleAccess(p)) {
+    toast('Module non disponible avec votre abonnement', 'error');
+    p = 'accueil';
+  }
+
   ['accueil','recettes','ingredients','fournisseurs','decision','planning'].forEach(name => {
     const el = document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1));
     if (el) el.style.display = p === name ? 'block' : 'none';
@@ -3853,6 +3898,7 @@ async function doLogin() {
     localStorage.setItem('easynutri_role',        data.role       || 'employe');
     localStorage.setItem('easynutri_entreprise',  data.entreprise || '');
     localStorage.setItem('easynutri_nom',         displayName);
+    localStorage.setItem('easynutri_abonnement',  String(data.abonnement || 1));
     API = data.webapp_url;
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('userLabel').textContent = email;
@@ -3971,6 +4017,10 @@ async function deleteUser() {
 }
 
 async function showUserList() {
+  if (!hasModuleAccess('equipe')) {
+    toast('Module Équipe non disponible avec votre abonnement', 'error');
+    return;
+  }
   openModal('modalUserList');
   document.getElementById('userListBody').innerHTML = `
     <div class="skel-spinner-wrap"><div class="skel-spinner"></div>
@@ -4225,6 +4275,11 @@ async function deleteRessource(id, type) {
 
 // ── Page Décision ──
 async function showDecisionPage() {
+  if (!hasModuleAccess('decision')) {
+    toast('Module Décision non disponible avec votre abonnement', 'error');
+    showPage('accueil');
+    return;
+  }
   await loadRessources();
   // Remplir select recettes
   const sel = document.getElementById('decisionRecetteSelect');
@@ -5096,6 +5151,10 @@ async function deletePlanningTaskRemote() {
 }
 
 function openPlanningFromCurrentRecette() {
+  if (!hasModuleAccess('planning')) {
+    toast('Module Planning non disponible avec votre abonnement', 'error')
+    return
+  }
   const recetteNom = String(document.getElementById('nom')?.value || '').trim()
   if (!recetteNom) {
     toast('Sauvegarde ou saisis un nom de recette avant de planifier', 'error')
