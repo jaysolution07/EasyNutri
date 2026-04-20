@@ -640,10 +640,47 @@
   .prod-lot-name { font-size: 12.5px; font-weight: 600; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prod-lot-input { width: 150px; flex-shrink: 0; font-size: 12px; padding: 6px 10px !important; }
 
+  .reception-lines { display: flex; flex-direction: column; gap: 12px; }
+  .reception-line {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .reception-line-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .reception-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .trace-search-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 340px) 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .trace-result {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    margin-bottom: 10px;
+  }
+  .trace-result-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .trace-result-meta { font-size: 11.5px; color: var(--text3); line-height: 1.6; }
+
   @media (max-width: 600px) {
     .prod-label-grid { grid-template-columns: repeat(2, 1fr); }
     .prod-lot-row { flex-wrap: wrap; }
     .prod-lot-input { width: 100%; }
+    .reception-grid { grid-template-columns: 1fr; }
+    .trace-search-grid { grid-template-columns: 1fr; }
   }
   /* Planning */
   .planning-card .card-body {
@@ -996,6 +1033,8 @@
     <div class="nav-item" onclick="showPage('recettes')" id="nav-recettes"><span class="icon">🍽️</span> Recettes</div>
     <div class="nav-item" onclick="showPage('ingredients')" id="nav-ingredients"><span class="icon">🥦</span> Ingrédients</div>
     <div class="nav-item" onclick="showPage('fournisseurs')" id="nav-fournisseurs"><span class="icon">🏭</span> Fournisseurs</div>
+    <div class="nav-item" onclick="showPage('reception')" id="nav-reception"><span class="icon">🚚</span> Reception</div>
+    <div class="nav-item" onclick="showPage('production')" id="nav-production"><span class="icon">🔍</span> Traçabilité</div>
 <div class="nav-item" onclick="showPage('decision')" id="nav-decision">
   <span class="icon">📊</span> Décision
 </div>
@@ -1037,6 +1076,18 @@
           <div class="home-card-icon">🏭</div>
           <div class="home-card-title">Fournisseurs</div>
           <div class="home-card-desc">Suivez vos fournisseurs, contacts et agréments</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+        <div class="home-card" id="home-card-reception" onclick="showPage('reception')">
+          <div class="home-card-icon">🚚</div>
+          <div class="home-card-title">Reception</div>
+          <div class="home-card-desc">Enregistrez les BL, lots, dates limites et controles temperature</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+        <div class="home-card" id="home-card-production" onclick="showPage('production')">
+          <div class="home-card-icon">🔍</div>
+          <div class="home-card-title">Traçabilité</div>
+          <div class="home-card-desc">Retrouvez chaque lot d’ingrédient utilisé dans vos recettes.</div>
           <div class="home-card-arrow">→</div>
         </div>
         <div class="home-card" id="home-card-decision" onclick="showPage('decision')">
@@ -1189,6 +1240,99 @@
             <thead><tr><th>Nom</th><th>Contact</th><th>Email</th><th>Téléphone</th><th>Agrément</th><th></th></tr></thead>
             <tbody id="fournisseursBody"><tr><td colspan="6"><div class="empty"><div class="empty-icon">🏭</div><p>Aucun fournisseur</p></div></td></tr></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+    <!-- PAGE RECEPTION -->
+    <div id="pageReception" style="display:none">
+      <div class="page-header">
+        <div>
+          <button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+          <div class="page-title">Reception <span>BL</span></div>
+          <div class="text-sm text-muted mt-2" id="receptionCount">— lignes</div>
+        </div>
+        <button class="btn btn-primary" onclick="newReceptionBL()">＋ Nouveau BL</button>
+      </div>
+
+      <div class="card" id="receptionFormCard" style="margin-bottom:20px">
+        <div class="card-header">
+          <div class="card-title">Controle reception</div>
+          <span class="badge badge-gray">Frais ≤ 4°C · Surgele ≤ -16°C</span>
+        </div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input class="form-input" id="recDate" type="date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">N° BL *</label>
+              <input class="form-input" id="recNumeroBl" placeholder="Ex: BL-2458">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fournisseur *</label>
+            <select class="form-select" id="recFournisseur"></select>
+          </div>
+          <div class="reception-lines" id="receptionLines"></div>
+          <div class="flex gap-2 mt-3">
+            <button class="btn btn-secondary" onclick="addReceptionLine()">＋ Ajouter une ligne</button>
+            <button class="btn btn-primary ml-auto" id="btnSaveReception" onclick="saveReceptionBL()">Sauvegarder le BL</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Dernieres receptions</div>
+          <div class="search-wrap" style="width:220px"><input class="form-input" id="searchReception" placeholder="BL, lot, produit..." style="padding:7px 10px 7px 34px;font-size:12px" oninput="renderReceptionsList()"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="table-sticky">
+            <thead><tr><th>BL</th><th>Date</th><th>Fournisseur</th><th>Produit</th><th>Lot</th><th>Temperature</th><th>Conformite</th><th>Action</th></tr></thead>
+            <tbody id="receptionsBody"><tr><td colspan="8"><div class="empty"><p>Aucune reception</p></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE PRODUCTION -->
+    <div id="pageProduction" style="display:none">
+      <div class="page-header">
+        <div>
+          <button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+          <div class="page-title">Traçabilité <span>Production</span></div>
+          <div class="text-sm text-muted mt-2" id="productionCount">— lignes</div>
+        </div>
+      </div>
+      <div class="trace-search-grid">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Filtres</div></div>
+          <div class="card-body">
+            <label class="form-label">Numero de lot ingredient ou recette</label>
+            <input class="form-input" id="searchProductionLot" placeholder="Tapez un lot..." oninput="renderProductionTrace()">
+            <div class="text-sm text-muted mt-2">Saisissez un lot d’ingrédient pour visualiser les recettes dans lesquelles il a été utilisé.</div>
+            <div class="form-group" style="margin-top:18px">
+              <label class="form-label">Recette</label>
+              <select class="form-select" id="productionRecipeSelect" onchange="renderProductionTrace()">
+                <option value="">Toutes les recettes</option>
+              </select>
+            </div>
+            <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" onclick="exportProductionsCsv(false)">Exporter CSV filtre</button>
+              <button class="btn btn-secondary btn-sm" onclick="exportProductionsCsv(true)">Exporter CSV total</button>
+            </div>
+            <div class="flex gap-2 mt-3" id="productionAdminActions" style="flex-wrap:wrap;display:none">
+              <button class="btn btn-danger btn-sm" onclick="purgeProductions(false)">Purger recette</button>
+              <button class="btn btn-danger btn-sm" onclick="purgeProductions(true)">Purger tout</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Resultats</div></div>
+          <div class="card-body" id="productionTraceResults">
+            <div class="empty"><p>Aucune recherche lancee</p></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1592,6 +1736,11 @@ let recettesFiltered = [], ingredientsFiltered = [];
 let CATEGORIES = [];           // noms triés
 let CATEGORIES_DATA = [];      // objets complets {id, nom, actif} depuis le Sheets
 let activeCatFilter = '';
+let RECEPTIONS = [];
+let PRODUCTIONS = [];
+let receptionDraft = [];
+let recEditingBlId = '';
+let expandedReceptionBl = '';
 const RECETTE_SUBS = {};
 function isAdmin() {
   return localStorage.getItem('easynutri_role') === 'admin';
@@ -1611,8 +1760,11 @@ function hasModuleAccess(moduleName) {
     case 'ingredients':
     case 'fournisseurs':
       return true;
+    case 'reception':
+      return abo >= 2;
     case 'equipe':
       return isAdmin() && abo >= 2;
+    case 'production':
     case 'decision':
     case 'planning':
       return abo >= 3;
@@ -1665,6 +1817,8 @@ async function init() {
     splashProgress(80, 'Chargement des recettes…');
     renderIngredientsList(); renderFournisseursList();await      loadRessources();
     await loadRecettes();
+    if (hasModuleAccess('reception')) await loadReceptions();
+    if (hasModuleAccess('production')) await loadProductions();
 
   splashProgress(100, 'Prêt !');
     document.getElementById('statusDot').className = 'badge badge-green';
@@ -1730,21 +1884,31 @@ function applyAbonnementRestrictions() {
   const navDecision = document.getElementById('nav-decision');
   const navPlanning = document.getElementById('nav-planning');
   const navEquipe = document.getElementById('nav-equipe');
+  const navReception = document.getElementById('nav-reception');
+  const navProduction = document.getElementById('nav-production');
 
   const homeDecision = document.getElementById('home-card-decision');
   const homePlanning = document.getElementById('home-card-planning');
+  const homeReception = document.getElementById('home-card-reception');
+  const homeProduction = document.getElementById('home-card-production');
   const homeEquipe = document.getElementById('homeCardEquipe');
   const btnPlanifier = document.querySelector('[onclick="openPlanningFromCurrentRecette()"]');
+  const btnProduction = document.querySelector('[onclick="openModalProduction()"]');
 
+  if (navReception) navReception.style.display = hasModuleAccess('reception') ? '' : 'none';
+  if (navProduction) navProduction.style.display = hasModuleAccess('production') ? '' : 'none';
   if (navDecision) navDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
   if (navPlanning) navPlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
   if (navEquipe) navEquipe.style.display = hasModuleAccess('equipe') ? '' : 'none';
 
+  if (homeReception) homeReception.style.display = hasModuleAccess('reception') ? '' : 'none';
+  if (homeProduction) homeProduction.style.display = hasModuleAccess('production') ? '' : 'none';
   if (homeDecision) homeDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
   if (homePlanning) homePlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
   if (homeEquipe) homeEquipe.style.display = hasModuleAccess('equipe') ? '' : 'none';
 
   if (btnPlanifier) btnPlanifier.style.display = hasModuleAccess('planning') ? '' : 'none';
+  if (btnProduction) btnProduction.style.display = hasModuleAccess('production') ? '' : 'none';
 }
 // ── CATEGORIES — chargement depuis API ──
 async function loadCategories() {
@@ -1769,6 +1933,7 @@ async function loadRecettes() {
     renderRecettesList();
     refreshCategorieSelects();
     refreshPlanningRecipeSelect();
+    refreshProductionRecipeSelect();
     document.getElementById('recetteCount').textContent = RECETTES.length + ' recette' + (RECETTES.length > 1 ? 's' : '');
   } catch(e) {}
 }
@@ -1927,7 +2092,7 @@ function showPage(p) {
     p = 'accueil';
   }
 
-  ['accueil','recettes','ingredients','fournisseurs','decision','planning'].forEach(name => {
+  ['accueil','recettes','ingredients','fournisseurs','reception','production','decision','planning'].forEach(name => {
     const el = document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1));
     if (el) el.style.display = p === name ? 'block' : 'none';
 
@@ -1937,6 +2102,14 @@ function showPage(p) {
 
   if (p === 'decision') {
     showDecisionPage();
+  }
+
+  if (p === 'reception') {
+    initReceptionPage();
+  }
+
+  if (p === 'production') {
+    initProductionPage();
   }
 
   if (p === 'planning') {
@@ -1951,6 +2124,448 @@ function showPage(p) {
   }
 
   window.scrollTo(0, 0);
+}
+
+// ── RECEPTION ──
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+function initReceptionPage() {
+  fillReceptionFournisseurs();
+  if (!document.getElementById('recDate').value) newReceptionBL();
+  renderReceptionsList();
+  if (!RECEPTIONS.length) loadReceptions();
+}
+function fillReceptionFournisseurs() {
+  const sel = document.getElementById('recFournisseur');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Selectionner —</option>' + FOURN.map(f => `<option value="${escHtml(f.nom)}">${escHtml(f.nom)}</option>`).join('');
+  sel.value = current;
+}
+async function loadReceptions() {
+  try {
+    RECEPTIONS = await apiJsonp('receptions');
+    renderReceptionsList();
+  } catch(e) {}
+}
+function newReceptionBL() {
+  recEditingBlId = '';
+  document.getElementById('recDate').value = todayISO();
+  document.getElementById('recNumeroBl').value = '';
+  document.getElementById('recNumeroBl').disabled = false;
+  fillReceptionFournisseurs();
+  receptionDraft = [];
+  addReceptionLine();
+}
+function addReceptionLine(line = {}) {
+  receptionDraft.push({
+    produit: line.produit || '',
+    ingredient_id: line.ingredient_id || '',
+    type_produit: line.type_produit || 'Frais',
+    lot: line.lot || '',
+    dlc_ddm_type: line.dlc_ddm_type || 'DLC',
+    dlc_ddm: line.dlc_ddm || '',
+    temperature: line.temperature || '',
+    conformite: line.conformite || 'Conforme',
+    action: line.action || '',
+    regle: line.regle || 'Non-réglé'
+  });
+  renderReceptionDraft();
+}
+function removeReceptionLine(idx) {
+  receptionDraft.splice(idx, 1);
+  if (!receptionDraft.length) addReceptionLine();
+  else renderReceptionDraft();
+}
+function receptionTempLimit(type) {
+  const t = String(type || '').toLowerCase();
+  if (t.includes('surg')) return { label: '≤ -16°C', bad: v => v > -16 };
+  if (t.includes('frais')) return { label: '≤ 4°C', bad: v => v > 4 };
+  return { label: '—', bad: () => false };
+}
+function syncReceptionLine(idx, field, value) {
+  receptionDraft[idx][field] = value;
+  let needsRender = field === 'type_produit' || field === 'temperature' || field === 'conformite';
+  if (field === 'produit') {
+    const ing = findIngredientByName(value);
+    receptionDraft[idx].ingredient_id = ing?.id || '';
+    if (ing?.dlc_type) receptionDraft[idx].dlc_ddm_type = ing.dlc_type;
+    needsRender = !!ing;
+  }
+  if (field === 'type_produit' || field === 'temperature') {
+    const temp = parseDecimalFr(receptionDraft[idx].temperature);
+    const hasTemp = String(receptionDraft[idx].temperature || '').trim() !== '';
+    const rule = receptionTempLimit(receptionDraft[idx].type_produit);
+    if (hasTemp && rule.bad(temp)) receptionDraft[idx].conformite = 'Non conforme';
+  }
+  if (needsRender) renderReceptionDraft();
+}
+function findIngredientByName(name) {
+  const q = String(name || '').trim().toLowerCase();
+  if (!q) return null;
+  return ING.find(ing => String(ing.nom || '').trim().toLowerCase() === q) || null;
+}
+function receptionIngredientDatalist() {
+  return `<datalist id="receptionIngredientList">${ING
+    .filter(ing => ing && ing.nom)
+    .map(ing => `<option value="${escHtml(ing.nom)}">${escHtml([ing.fournisseur, ing.ref_fournisseur].filter(Boolean).join(' · '))}</option>`)
+    .join('')}</datalist>`;
+}
+function renderReceptionDraft() {
+  const cont = document.getElementById('receptionLines');
+  if (!cont) return;
+  cont.innerHTML = receptionIngredientDatalist() + receptionDraft.map((line, idx) => {
+    const rule = receptionTempLimit(line.type_produit);
+    const temp = parseDecimalFr(line.temperature);
+    const hasTemp = String(line.temperature || '').trim() !== '';
+    const tempBad = hasTemp && rule.bad(temp);
+    const conf = tempBad ? 'Non conforme' : line.conformite;
+    line.conformite = conf;
+    const linkedIng = findIngredientByName(line.produit);
+    return `<div class="reception-line">
+      <div class="reception-line-head">
+        <strong>Ligne ${idx + 1}</strong>
+        <div class="flex gap-2 items-center">
+          <span class="badge ${conf === 'Non conforme' ? 'badge-danger' : 'badge-green'}">${escHtml(conf)}</span>
+          <button class="btn btn-ghost btn-sm" onclick="removeReceptionLine(${idx})">Supprimer</button>
+        </div>
+      </div>
+      <div class="reception-grid">
+        <div class="form-group"><label class="form-label">Produit *</label><input class="form-input" list="receptionIngredientList" value="${escHtml(line.produit)}" oninput="syncReceptionLine(${idx},'produit',this.value)" placeholder="Rechercher un ingredient...">${linkedIng ? '<div class="text-xs text-muted mt-2">Ingredient lie</div>' : '<div class="text-xs text-muted mt-2">Tapez pour chercher dans INGREDIENTS</div>'}</div>
+        <div class="form-group"><label class="form-label">Type produit</label><select class="form-select" onchange="syncReceptionLine(${idx},'type_produit',this.value)">
+          ${['Frais','Surgele','Ambiant'].map(v => `<option value="${v}" ${line.type_produit===v?'selected':''}>${v}</option>`).join('')}
+        </select><div class="text-xs text-muted mt-2">Cible: ${rule.label}</div></div>
+        <div class="form-group"><label class="form-label">N° lot *</label><input class="form-input" value="${escHtml(line.lot)}" oninput="syncReceptionLine(${idx},'lot',this.value)" placeholder="Lot fournisseur"></div>
+        <div class="form-group"><label class="form-label">Temperature reception</label><input class="form-input" value="${escHtml(line.temperature)}" oninput="syncReceptionLine(${idx},'temperature',this.value)" inputmode="decimal" placeholder="Ex: 3,5"></div>
+        <div class="form-group"><label class="form-label">DLC/DDM type</label><select class="form-select" onchange="syncReceptionLine(${idx},'dlc_ddm_type',this.value)">
+          ${['DLC','DDM'].map(v => `<option value="${v}" ${line.dlc_ddm_type===v?'selected':''}>${v}</option>`).join('')}
+        </select></div>
+        <div class="form-group"><label class="form-label">DLC/DDM</label><input class="form-input" type="date" value="${escHtml(line.dlc_ddm)}" onchange="syncReceptionLine(${idx},'dlc_ddm',this.value)"></div>
+        <div class="form-group"><label class="form-label">Conformite</label><select class="form-select" ${tempBad ? 'disabled' : ''} onchange="syncReceptionLine(${idx},'conformite',this.value)">
+          ${['Conforme','Non conforme'].map(v => `<option value="${v}" ${conf===v?'selected':''}>${v}</option>`).join('')}
+        </select>${tempBad ? '<div class="text-xs text-muted mt-2">Temperature hors limite</div>' : ''}</div>
+        <div class="form-group"><label class="form-label">Action corrective ${conf === 'Non conforme' ? '*' : ''}</label><input class="form-input" value="${escHtml(line.action)}" oninput="syncReceptionLine(${idx},'action',this.value)" placeholder="Obligatoire si non conforme"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function saveReceptionBL() {
+  const numero = document.getElementById('recNumeroBl').value.trim();
+  const fournisseur = document.getElementById('recFournisseur').value.trim();
+  const date = document.getElementById('recDate').value;
+  if (!numero || !fournisseur) { toast('BL et fournisseur obligatoires', 'error'); return; }
+  for (const line of receptionDraft) {
+    if (!line.produit || !line.lot) { toast('Produit et lot obligatoires sur chaque ligne', 'error'); return; }
+    if (line.conformite === 'Non conforme' && !String(line.action || '').trim()) {
+      toast('Action corrective obligatoire si non conforme', 'error');
+      return;
+    }
+  }
+  const payload = { action:'saveReception', id_bl: recEditingBlId || '', date, fournisseur, numero_bl: numero, lignes: receptionDraft };
+  const optimistic = receptionDraft.map((line, idx) => ({
+    id_bl: recEditingBlId || ('LOCAL-' + Date.now()),
+    id_ligne: 'LOCAL-' + idx,
+    date, fournisseur, numero_bl: numero,
+    type_produit: line.type_produit, produit: line.produit, lot: line.lot,
+    dlc_ddm_type: line.dlc_ddm_type, dlc_ddm: line.dlc_ddm,
+    temperature: line.temperature,
+    temperature_cible: receptionTempLimit(line.type_produit).label,
+    conformite: line.conformite, action: line.action, regle: line.regle
+  }));
+  RECEPTIONS = optimistic.concat(RECEPTIONS.filter(r => r.id_bl !== recEditingBlId));
+  renderReceptionsList();
+  const btn = document.getElementById('btnSaveReception');
+  btnLoading(btn, true);
+  try {
+    const data = await apiJsonp('saveReceptionJsonp', { payload: JSON.stringify(payload) });
+    if (!data.ok) throw new Error(data.message || 'Erreur sauvegarde BL');
+    toast('BL sauvegarde', 'success');
+    newReceptionBL();
+    await loadReceptions();
+  } catch(e) {
+    RECEPTIONS = RECEPTIONS.filter(r => !String(r.id_bl).startsWith('LOCAL-'));
+    renderReceptionsList();
+    toast(e.message || 'Erreur sauvegarde BL', 'error');
+  }
+  btnLoading(btn, false);
+}
+function receptionGroups() {
+  const map = {};
+  RECEPTIONS.forEach(r => {
+    const key = r.id_bl || r.numero_bl;
+    if (!map[key]) map[key] = [];
+    map[key].push(r);
+  });
+  return Object.values(map).sort((a, b) => String(b[0].date || '').localeCompare(String(a[0].date || '')));
+}
+function toggleReceptionDetails(idBl) {
+  expandedReceptionBl = expandedReceptionBl === idBl ? '' : idBl;
+  renderReceptionsList();
+}
+function editReceptionBL(idBl) {
+  const rows = RECEPTIONS.filter(r => r.id_bl === idBl);
+  if (!rows.length) return;
+  const first = rows[0];
+  recEditingBlId = idBl;
+  document.getElementById('recDate').value = first.date || todayISO();
+  document.getElementById('recNumeroBl').value = first.numero_bl || '';
+  document.getElementById('recNumeroBl').disabled = false;
+  fillReceptionFournisseurs();
+  document.getElementById('recFournisseur').value = first.fournisseur || '';
+  receptionDraft = rows.map(r => ({
+    produit: r.produit || '',
+    ingredient_id: r.ingredient_id || '',
+    type_produit: r.type_produit || 'Frais',
+    lot: r.lot || '',
+    dlc_ddm_type: r.dlc_ddm_type || 'DLC',
+    dlc_ddm: r.dlc_ddm || '',
+    temperature: r.temperature || '',
+    conformite: r.conformite || 'Conforme',
+    action: r.action || '',
+    regle: r.regle || 'Non-réglé'
+  }));
+  renderReceptionDraft();
+  document.getElementById('receptionFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+async function deleteReceptionBL(idBl) {
+  if (!isAdmin()) { toast('Reserve aux admins', 'error'); return; }
+  if (!confirm('Supprimer ce BL et toutes ses lignes ?')) return;
+  const before = [...RECEPTIONS];
+  RECEPTIONS = RECEPTIONS.filter(r => r.id_bl !== idBl);
+  renderReceptionsList();
+  try {
+    const data = await apiJsonp('deleteReceptionJsonp', { id_bl: idBl });
+    if (!data.ok) throw new Error(data.message || 'Erreur suppression BL');
+    toast('BL supprime', 'success');
+  } catch(e) {
+    RECEPTIONS = before;
+    renderReceptionsList();
+    toast(e.message || 'Erreur suppression BL', 'error');
+  }
+}
+function renderReceptionsList() {
+  const tbody = document.getElementById('receptionsBody');
+  if (!tbody) return;
+  const q = (document.getElementById('searchReception')?.value || '').toLowerCase();
+  const groups = receptionGroups().filter(rows => rows.some(r => [r.numero_bl, r.fournisseur, r.produit, r.lot].join(' ').toLowerCase().includes(q)));
+  document.getElementById('receptionCount').textContent = groups.length + ' BL';
+  if (!groups.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><p>Aucune reception</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = groups.slice(0, 120).map(rows => {
+    const r = rows[0];
+    const idBl = r.id_bl || r.numero_bl;
+    const nonConformes = rows.filter(x => x.conformite === 'Non conforme').length;
+    const products = rows.map(x => escHtml(x.produit)).join(', ');
+    const detail = expandedReceptionBl === idBl ? `<tr><td colspan="8" style="background:var(--surface2)">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${rows.map(x => `<div class="trace-result" style="margin-bottom:0">
+          <div class="trace-result-title">${escHtml(x.produit)} · lot ${escHtml(x.lot)}</div>
+          <div class="trace-result-meta">${escHtml(x.type_produit)} · ${escHtml(x.dlc_ddm_type)} ${escHtml(x.dlc_ddm)} · ${escHtml(x.temperature)} °C / ${escHtml(x.temperature_cible)} · ${escHtml(x.conformite)}</div>
+          ${x.action ? `<div class="trace-result-meta">Action: ${escHtml(x.action)}</div>` : ''}
+        </div>`).join('')}
+      </div>
+    </td></tr>` : '';
+    return `<tr>
+      <td class="td-name">${escHtml(r.numero_bl)}</td>
+      <td>${escHtml(r.date)}</td>
+      <td>${escHtml(r.fournisseur)}</td>
+      <td>${rows.length} ligne${rows.length > 1 ? 's' : ''}<div class="text-xs text-muted">${products}</div></td>
+      <td>${rows.map(x => escHtml(x.lot)).join('<br>')}</td>
+      <td>${rows.map(x => `${escHtml(x.temperature)} °C`).join('<br>')}</td>
+      <td><span class="badge ${nonConformes ? 'badge-danger' : 'badge-green'}">${nonConformes ? nonConformes + ' non conforme' : 'Conforme'}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="toggleReceptionDetails('${escHtml(idBl)}')">${expandedReceptionBl === idBl ? 'Masquer' : 'Voir'}</button>
+        <button class="btn btn-secondary btn-sm" onclick="editReceptionBL('${escHtml(idBl)}')">Modifier</button>
+        ${isAdmin() ? `<button class="btn btn-danger btn-sm" onclick="deleteReceptionBL('${escHtml(idBl)}')">Supprimer</button>` : ''}
+      </td>
+    </tr>${detail}`;
+  }).join('');
+}
+
+// ── PRODUCTION TRACEABILITY ──
+async function loadProductions() {
+  try {
+    PRODUCTIONS = await apiJsonp('productions');
+    const el = document.getElementById('productionCount');
+    if (el) el.textContent = PRODUCTIONS.length + ' ligne' + (PRODUCTIONS.length > 1 ? 's' : '');
+  } catch(e) {}
+}
+async function initProductionPage() {
+  refreshProductionRecipeSelect();
+  const adminActions = document.getElementById('productionAdminActions');
+  if (adminActions) adminActions.style.display = isAdmin() ? 'flex' : 'none';
+  await loadProductions();
+  refreshProductionRecipeSelect();
+  renderProductionTrace();
+}
+function refreshProductionRecipeSelect() {
+  const sel = document.getElementById('productionRecipeSelect');
+  if (!sel) return;
+  const current = sel.value;
+  const names = [...new Set([
+    ...RECETTES.map(r => r.nom).filter(Boolean),
+    ...PRODUCTIONS.map(p => p.recette).filter(Boolean)
+  ])].sort();
+  sel.innerHTML = '<option value="">Toutes les recettes</option>' + names.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+  sel.value = names.includes(current) ? current : '';
+}
+function filteredProductionRows(all = false) {
+  if (all) return [...PRODUCTIONS];
+  const q = (document.getElementById('searchProductionLot')?.value || '').toLowerCase().trim();
+  const recipe = document.getElementById('productionRecipeSelect')?.value || '';
+  return PRODUCTIONS.filter(p => {
+    const matchRecipe = !recipe || p.recette === recipe;
+    const matchLot = !q || [p.lot_ingredient, p.lot_recette, p.ingredient, p.recette].join(' ').toLowerCase().includes(q);
+    return matchRecipe && matchLot;
+  });
+}
+function renderProductionTrace() {
+  const box = document.getElementById('productionTraceResults');
+  if (!box) return;
+  const q = (document.getElementById('searchProductionLot')?.value || '').toLowerCase().trim();
+  const recipe = document.getElementById('productionRecipeSelect')?.value || '';
+  if (!q && !recipe) {
+    box.innerHTML = '<div class="empty"><p>Choisissez une recette ou tapez un lot</p></div>';
+    return;
+  }
+  const matches = filteredProductionRows(false);
+  if (!matches.length) {
+    box.innerHTML = '<div class="empty"><p>Aucune production trouvee</p></div>';
+    return;
+  }
+  const groups = {};
+  matches.forEach(p => {
+    const key = p.id_production || [p.recette, p.lot_recette, p.date].join('|');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
+  });
+  box.innerHTML = Object.values(groups).map(rows => {
+    const p = rows[0];
+    const ingredients = rows.map(r => `${escHtml(r.ingredient)} · lot ${escHtml(r.lot_ingredient || '—')} · ${escHtml(r.poids_ingredient || '—')} g`).join('<br>');
+    return `<div class="trace-result">
+      <div class="trace-result-title">${escHtml(p.recette)} · lot recette ${escHtml(p.lot_recette)}</div>
+      <div class="trace-result-meta">Date: ${escHtml(p.date || '—')} · DLC/DDM: ${escHtml(p.dlc_ddm_type || '—')} ${escHtml(p.dlc_ddm || '')}</div>
+      <div class="trace-result-meta" style="margin-top:8px">${ingredients}</div>
+    </div>`;
+  }).join('');
+}
+function csvEscape(v) {
+  const s = String(v ?? '');
+  return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function exportProductionsCsv(all) {
+  const rows = filteredProductionRows(all);
+  if (!rows.length) { toast('Aucune production a exporter', 'error'); return; }
+  const headers = [
+    'ID_Production','Date','Recette','Lot recette','DLC/DDM_type','DLC/DDM',
+    'Ingredient','Lot ingredient','DLC/DDM ingredient','Poids ingredient (g)',
+    'Energie kJ/100g','Energie kcal/100g','Proteines g/100g','Glucides g/100g',
+    'Sucres g/100g','Lipides g/100g','AGS g/100g','Sel g/100g','Fibres g/100g','Allergenes'
+  ];
+  const values = rows.map(p => [
+    p.id_production,p.date,p.recette,p.lot_recette,p.dlc_ddm_type,p.dlc_ddm,
+    p.ingredient,p.lot_ingredient,p.dlc_ddm_ingredient,p.poids_ingredient,
+    p.energie_kj,p.energie_kcal,p.proteines_g,p.glucides_g,p.sucres_g,p.lipides_g,p.ags_g,p.sel_g,p.fibres_g,p.allergenes
+  ]);
+  const csv = [headers, ...values].map(row => row.map(csvEscape).join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  const recipe = document.getElementById('productionRecipeSelect')?.value || 'tout';
+  a.href = URL.createObjectURL(blob);
+  a.download = 'productions-' + (all ? 'tout' : recipe.replace(/\s+/g, '-')) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+async function purgeProductions(all) {
+  if (!isAdmin()) { toast('Reserve aux admins', 'error'); return; }
+  const recipe = document.getElementById('productionRecipeSelect')?.value || '';
+  if (!all && !recipe) { toast('Choisis une recette a purger', 'error'); return; }
+  const msg = all ? 'Purger toute la production ?' : 'Purger les productions de cette recette ?';
+  if (!confirm(msg)) return;
+  const before = [...PRODUCTIONS];
+  PRODUCTIONS = all ? [] : PRODUCTIONS.filter(p => p.recette !== recipe);
+  renderProductionTrace();
+  try {
+    const data = await apiJsonp('purgeProductionsJsonp', { recette: all ? '' : recipe });
+    if (!data.ok) throw new Error(data.message || 'Erreur purge');
+    toast('Production purgee', 'success');
+    await loadProductions();
+    refreshProductionRecipeSelect();
+    renderProductionTrace();
+  } catch(e) {
+    PRODUCTIONS = before;
+    renderProductionTrace();
+    toast(e.message || 'Erreur purge', 'error');
+  }
+}
+function buildProductionPayload() {
+  const nom = document.getElementById('nom').value || 'Recette';
+  const poidsTotal = RECETTE.ingredients.reduce((acc, row) => acc + (parseFloat(row.poids) || 0), 0);
+  return {
+    action: 'saveProduction',
+    date: todayISO(),
+    recette_id: RECETTE.id || '',
+    recette: nom,
+    lot_recette: PROD.lotRecette,
+    poids_net: PROD.poidsNet,
+    dlc_ddm_type: PROD.dateType,
+    dlc_ddm: PROD.dateLimite,
+    mentions: PROD.mentions,
+    format_export: PROD.format,
+    lignes: RECETTE.ingredients.map(row => {
+      const ing = ING.find(x => x.id == row.ingredient) || {};
+      return {
+        ingredient_id: ing.id || row.ingredient,
+        ingredient: ing.nom || row.ingredient,
+        lot_ingredient: PROD.lotsIng?.[ing.id] || '',
+        dlc_ddm_ingredient: PROD.dateIng?.[ing.id] || '',
+        poids_ingredient: row.poids || '',
+        energie_kj: poidsTotal > 0 ? ((parseFloat(ing.energie_kjoules) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        energie_kcal: poidsTotal > 0 ? ((parseFloat(ing.energie_kcal) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        proteines_g: poidsTotal > 0 ? ((parseFloat(ing.proteines_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        glucides_g: poidsTotal > 0 ? ((parseFloat(ing.glucides_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        sucres_g: poidsTotal > 0 ? ((parseFloat(ing.sucres_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        lipides_g: poidsTotal > 0 ? ((parseFloat(ing.lipides_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        ags_g: poidsTotal > 0 ? ((parseFloat(ing.Ags) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        sel_g: poidsTotal > 0 ? ((parseFloat(ing.sel_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        fibres_g: poidsTotal > 0 ? ((parseFloat(ing.fibres_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+        allergenes: ing.allergenes || ''
+      };
+    })
+  };
+}
+function saveProductionTraceOptimistic() {
+  if (!hasModuleAccess('production')) return;
+  const payload = buildProductionPayload();
+  const localId = 'LOCAL-' + Date.now();
+  PRODUCTIONS = payload.lignes.map(line => ({
+    id_production: localId,
+    date: payload.date,
+    recette_id: payload.recette_id,
+    recette: payload.recette,
+    lot_recette: payload.lot_recette,
+    poids_net: payload.poids_net,
+    dlc_ddm_type: payload.dlc_ddm_type,
+    dlc_ddm: payload.dlc_ddm,
+    ...line
+  })).concat(PRODUCTIONS);
+  setTimeout(async () => {
+    try {
+      await fetch(API, {
+        method:'POST',
+        mode:'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      setTimeout(() => loadProductions(), 1200);
+    } catch(e) {
+      PRODUCTIONS = PRODUCTIONS.filter(p => p.id_production !== localId);
+      toast('Production non enregistree dans Sheets', 'error');
+    }
+  }, 0);
 }
 
 // ── FOURNISSEURS ──
@@ -2538,6 +3153,7 @@ let PROD = {
 };
 
 function openModalProduction() {
+  if (!hasModuleAccess('production')) { toast('Module Production non disponible avec votre abonnement', 'error'); return; }
   if (!RECETTE.id) return;
   PROD = { lotRecette:'', poidsNet:'', dateType:'DLC', dateLimite:'', mentions:'', lotsIng:{}, format:'pdf' };
   document.getElementById('prodNbEtiquettes').value = '1';
@@ -2615,7 +3231,7 @@ div.innerHTML = `
 function setProdDateType(type) {
   PROD.dateType = type;
   document.getElementById('prodTypeDLC').classList.toggle('active',  type === 'DLC');
-  document.getElementById('prodTypeDLUO').classList.toggle('active', type === 'DLUO');
+  document.getElementById('prodTypeDLUO').classList.toggle('active', type === 'DDM');
   document.getElementById('prodDateLabel').textContent =
     type === 'DLC' ? "À consommer jusqu'au" : "À consommer de préférence avant le";
 }
@@ -2668,7 +3284,7 @@ function renderLabelPreview() {
   const mentionsLive = document.getElementById('prodMentions')?.value.trim() || PROD.mentions || '';
   const nom = document.getElementById('nom').value || 'Recette';
   const dateStr = PROD.dateLimite ? new Date(PROD.dateLimite).toLocaleDateString('fr-FR') : '—';
-  const dateLabel = PROD.dateType === 'DLC' ? 'DLC :' : 'DLUO :';
+  const dateLabel = PROD.dateType === 'DLC' ? 'DLC :' : 'DDM :';
 
   const dims = {
     pdf:         { w: 420, h: null, fixedH: false, label: 'A4 / PDF',    round: false, baseFontSize: 10 },
@@ -3193,7 +3809,7 @@ function downloadLabelPdf() {
 function buildRecap() {
   const nom = document.getElementById('nom').value || 'Recette';
   const dateStr = PROD.dateLimite ? new Date(PROD.dateLimite).toLocaleDateString('fr-FR') : '—';
-  const dateLabel = PROD.dateType === 'DLC' ? 'DLC' : 'DLUO';
+  const dateLabel = PROD.dateType === 'DLC' ? 'DLC' : 'DDM';
   const formatNames = {
     pdf:'PDF Fiche de production', zpl_57x74:'Étiquette 57×74mm',
     zpl_57x32:'Étiquette 57×32mm', zpl_round60:'Étiquette ronde 60mm',
@@ -3263,6 +3879,7 @@ async function prodExport() {
   const btn = document.getElementById('btnProdExport');
   btnLoading(btn, true);
 
+  saveProductionTraceOptimistic();
   if (PROD.format === 'pdf') {
     await prodExportPdf();
   } else {
@@ -3501,7 +4118,7 @@ function downloadZpl(zpl) {
 function buildZpl() {
   const nom = document.getElementById('nom').value || 'Recette';
   const dateStr = PROD.dateLimite ? new Date(PROD.dateLimite).toLocaleDateString('fr-FR') : '';
-  const dateLabel = PROD.dateType === 'DLC' ? 'DLC :' : 'DLUO :';
+  const dateLabel = PROD.dateType === 'DLC' ? 'DLC :' : 'DDM :';
 
   // Avec ^CI28 les accents passent nativement — zPad garde juste les caractères vraiment problématiques
   const zPad = (s) => String(s).replace(/[^\x20-\x7E\u00C0-\u00FF]/g, '?');
@@ -3872,6 +4489,32 @@ function fmtNum(n) {
   return (!isNaN(v)) ? v.toFixed(1) : '0.0'; 
 }function sanitizeDecimal(input) { let v=input.value.replace(/\./g,',').replace(/[^0-9,]/g,''); const parts=v.split(','); if(parts.length>2) v=parts[0]+','+parts.slice(1).join(''); input.value=v; }
 function parseDecimalFr(str) { if(!str && str!==0) return 0; return parseFloat(String(str).replace(',','.')) || 0; }
+function apiJsonp(action, params = {}) {
+  return new Promise((resolve, reject) => {
+    const cb = '__easynutri_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const qs = new URLSearchParams({ action, callback: cb, ...params });
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Delai depasse cote Apps Script'));
+    }, 15000);
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cb];
+      script.remove();
+    }
+    window[cb] = data => {
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('Erreur de chargement Apps Script'));
+    };
+    script.src = API + '?' + qs.toString();
+    document.body.appendChild(script);
+  });
+}
 
 // ── LOGIN ──
 async function doLogin() {
@@ -3965,6 +4608,7 @@ async function createUser() {
   const email = document.getElementById('newUserEmail').value.trim();
   const mdp   = document.getElementById('newUserMdp').value.trim();
   const role  = document.getElementById('newUserRole').value;
+  const abonnement = getAbonnement();
 
   if (_editUserEmail) {
     // MODE ÉDITION
@@ -3974,7 +4618,7 @@ async function createUser() {
     try {
       const r = await fetch(MASTER_API, {
         method: 'POST',
-        body: JSON.stringify({ action: 'updateUser', email: _editUserEmail, nom, mdp: mdp || null, role })
+        body: JSON.stringify({ action: 'updateUser', email: _editUserEmail, nom, mdp: mdp || null, role, abonnement })
       });
       const data = await r.json();
       if (data.ok) { toast('Utilisateur modifié ✓', 'success'); closeModal('modalCreateUser'); showUserList(); }
@@ -3989,7 +4633,7 @@ async function createUser() {
     try {
       const r = await fetch(MASTER_API, {
         method: 'POST',
-        body: JSON.stringify({ action: 'createUser', nom, email, mdp, role, webapp_url: API, entreprise: getEntreprise() })
+        body: JSON.stringify({ action: 'createUser', nom, email, mdp, role, abonnement, webapp_url: API, entreprise: getEntreprise() })
       });
       const data = await r.json();
       if (data.ok) { toast('Utilisateur créé ✓', 'success'); closeModal('modalCreateUser'); showUserList(); }
@@ -5603,12 +6247,12 @@ function savePlanningTaskOld() {
           <input class="form-input" id="prodNbEtiquettes" type="number" min="1" value="1" placeholder="1">
         </div>
       </div>
-      <!-- DLC / DLUO toggle -->
+      <!-- DLC / DDM toggle -->
       <div class="form-group">
         <label class="form-label">Type de date limite</label>
         <div style="display:flex;gap:10px;margin-top:4px">
           <div class="type-chip active" id="prodTypeDLC"  onclick="setProdDateType('DLC')">🔴 DLC</div>
-          <div class="type-chip"        id="prodTypeDLUO" onclick="setProdDateType('DLUO')">🟡 DLUO</div>
+          <div class="type-chip"        id="prodTypeDLUO" onclick="setProdDateType('DDM')">🟡 DDM</div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
           <span id="prodDateLabel" style="font-size:12px;font-weight:600;color:var(--text2);white-space:nowrap">À consommer jusqu'au</span>
