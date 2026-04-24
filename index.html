@@ -1509,7 +1509,10 @@
       <div class="page-title">Mon <span>Planning</span></div>
       <div class="text-sm text-muted mt-2">Organisation semaine et production</div>
     </div>
-    <button class="btn btn-primary" onclick="openModalPlanning()">＋ Nouvelle tâche</button>
+    <div class="flex gap-2" style="flex-wrap:wrap">
+      <button class="btn btn-danger" onclick="purgePlanningDoneRemote()">Purger taches faites</button>
+      <button class="btn btn-primary" onclick="openModalPlanning()">＋ Nouvelle tâche</button>
+    </div>
   </div>
 
   <div class="card planning-card">
@@ -2391,7 +2394,12 @@ async function loadProductions() {
     PRODUCTIONS = await apiJsonp('productions');
     const el = document.getElementById('productionCount');
     if (el) el.textContent = PRODUCTIONS.length + ' ligne' + (PRODUCTIONS.length > 1 ? 's' : '');
-  } catch(e) {}
+  } catch(e) {
+    PRODUCTIONS = [];
+    const el = document.getElementById('productionCount');
+    if (el) el.textContent = '0 ligne';
+    console.error('Erreur chargement productions', e);
+  }
 }
 async function initProductionPage() {
   refreshProductionRecipeSelect();
@@ -2415,9 +2423,10 @@ function refreshProductionRecipeSelect() {
 function filteredProductionRows(all = false) {
   if (all) return [...PRODUCTIONS];
   const q = (document.getElementById('searchProductionLot')?.value || '').toLowerCase().trim();
-  const recipe = document.getElementById('productionRecipeSelect')?.value || '';
+  const recipe = (document.getElementById('productionRecipeSelect')?.value || '').trim().toLowerCase();
   return PRODUCTIONS.filter(p => {
-    const matchRecipe = !recipe || p.recette === recipe;
+    const recetteNom = String(p.recette || '').trim().toLowerCase();
+    const matchRecipe = !recipe || recetteNom === recipe;
     const matchLot = !q || [p.lot_ingredient, p.lot_recette, p.ingredient, p.recette].join(' ').toLowerCase().includes(q);
     return matchRecipe && matchLot;
   });
@@ -2444,11 +2453,19 @@ function renderProductionTrace() {
   });
   box.innerHTML = Object.values(groups).map(rows => {
     const p = rows[0];
+    const poidsInfo = p.poids_recette_produite ? ` · Poids produit: ${escHtml(p.poids_recette_produite)} g` : '';
+    const contenantInfo = p.contenants ? `<div class="trace-result-meta">Contenants: ${escHtml(p.contenants)}</div>` : '';
+    const etiquetteInfo = p.nb_etiquettes ? `<div class="trace-result-meta">Etiquettes: ${escHtml(p.nb_etiquettes)} · Format: ${escHtml(p.format_export || 'pdf')}</div>` : '';
     const ingredients = rows.map(r => `${escHtml(r.ingredient)} · lot ${escHtml(r.lot_ingredient || '—')} · ${escHtml(r.poids_ingredient || '—')} g`).join('<br>');
     return `<div class="trace-result">
       <div class="trace-result-title">${escHtml(p.recette)} · lot recette ${escHtml(p.lot_recette)}</div>
-      <div class="trace-result-meta">Date: ${escHtml(p.date || '—')} · DLC/DDM: ${escHtml(p.dlc_ddm_type || '—')} ${escHtml(p.dlc_ddm || '')}</div>
+      <div class="trace-result-meta">Date: ${escHtml(p.date || '—')} · DLC/DDM: ${escHtml(p.dlc_ddm_type || '—')} ${escHtml(p.dlc_ddm || '')}${poidsInfo}</div>
+      ${contenantInfo}
+      ${etiquetteInfo}
       <div class="trace-result-meta" style="margin-top:8px">${ingredients}</div>
+      <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="openProductionFromHistory('${escHtml(p.id_production)}')">Refaire etiquette</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -2461,12 +2478,14 @@ function exportProductionsCsv(all) {
   if (!rows.length) { toast('Aucune production a exporter', 'error'); return; }
   const headers = [
     'ID_Production','Date','Recette','Lot recette','DLC/DDM_type','DLC/DDM',
+    'Poids recette base (g)','Poids recette produite (g)','Contenants','Nb etiquettes',
     'Ingredient','Lot ingredient','DLC/DDM ingredient','Poids ingredient (g)',
     'Energie kJ/100g','Energie kcal/100g','Proteines g/100g','Glucides g/100g',
     'Sucres g/100g','Lipides g/100g','AGS g/100g','Sel g/100g','Fibres g/100g','Allergenes'
   ];
   const values = rows.map(p => [
     p.id_production,p.date,p.recette,p.lot_recette,p.dlc_ddm_type,p.dlc_ddm,
+    p.poids_recette_base,p.poids_recette_produite,p.contenants,p.nb_etiquettes,
     p.ingredient,p.lot_ingredient,p.dlc_ddm_ingredient,p.poids_ingredient,
     p.energie_kj,p.energie_kcal,p.proteines_g,p.glucides_g,p.sucres_g,p.lipides_g,p.ags_g,p.sel_g,p.fibres_g,p.allergenes
   ]);
@@ -2503,7 +2522,11 @@ async function purgeProductions(all) {
 }
 function buildProductionPayload() {
   const nom = document.getElementById('nom').value || 'Recette';
-  const poidsTotal = RECETTE.ingredients.reduce((acc, row) => acc + (parseFloat(row.poids) || 0), 0);
+  const poidsTotal = getRecetteBaseWeight();
+  const poidsProduit = getProductionWeight();
+  const ratio = getProductionScaleRatio();
+  const contenantsSummary = getProdContenantsSummary();
+  const formatExport = (PROD.formats || ['pdf']).join(',');
   return {
     action: 'saveProduction',
     date: todayISO(),
@@ -2511,18 +2534,25 @@ function buildProductionPayload() {
     recette: nom,
     lot_recette: PROD.lotRecette,
     poids_net: PROD.poidsNet,
+    poids_recette_base: formatWeightG(poidsTotal, 2),
+    poids_recette_produite: formatWeightG(poidsProduit, 2),
+    type_contenant: contenantsSummary,
+    contenants: contenantsSummary,
+    contenants_json: JSON.stringify(PROD.contenants || []),
+    nb_etiquettes: PROD.nbEtiquettes || (document.getElementById('prodNbEtiquettes')?.value || '1'),
     dlc_ddm_type: PROD.dateType,
     dlc_ddm: PROD.dateLimite,
     mentions: PROD.mentions,
-    format_export: PROD.format,
+    format_export: formatExport,
     lignes: RECETTE.ingredients.map(row => {
       const ing = ING.find(x => x.id == row.ingredient) || {};
+      const poidsIngredient = (parseFloat(row.poids) || 0) * ratio;
       return {
         ingredient_id: ing.id || row.ingredient,
         ingredient: ing.nom || row.ingredient,
         lot_ingredient: PROD.lotsIng?.[ing.id] || '',
         dlc_ddm_ingredient: PROD.dateIng?.[ing.id] || '',
-        poids_ingredient: row.poids || '',
+        poids_ingredient: formatWeightG(poidsIngredient, 2),
         energie_kj: poidsTotal > 0 ? ((parseFloat(ing.energie_kjoules) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
         energie_kcal: poidsTotal > 0 ? ((parseFloat(ing.energie_kcal) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
         proteines_g: poidsTotal > 0 ? ((parseFloat(ing.proteines_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
@@ -2548,8 +2578,16 @@ function saveProductionTraceOptimistic() {
     recette: payload.recette,
     lot_recette: payload.lot_recette,
     poids_net: payload.poids_net,
+    poids_recette_base: payload.poids_recette_base,
+    poids_recette_produite: payload.poids_recette_produite,
+    type_contenant: payload.type_contenant,
+    contenants: payload.contenants,
+    contenants_json: payload.contenants_json,
+    nb_etiquettes: payload.nb_etiquettes,
     dlc_ddm_type: payload.dlc_ddm_type,
     dlc_ddm: payload.dlc_ddm,
+    mentions: payload.mentions,
+    format_export: payload.format_export,
     ...line
   })).concat(PRODUCTIONS);
   setTimeout(async () => {
@@ -3148,20 +3186,184 @@ async function deleteIngredient() {
 //  MODULE PRODUCTION
 // ════════════════════════════════════════════════════════
 let PROD = {
-  lotRecette: '', poidsNet: '', dateType: 'DLC', dateLimite: '',
-  mentions: '', lotsIng: {}, format: 'pdf'
+  lotRecette: '', poidsNet: '', poidsProduit: '', dateType: 'DLC', dateLimite: '',
+  mentions: '', lotsIng: {}, dateIng: {}, contenants: [], nbEtiquettes: '1', formats: ['pdf'], historyMode: false, format: 'pdf'
 };
+
+function parseDecimalInput(value) {
+  const normalized = String(value || '').replace(',', '.').trim();
+  const parsed = parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatWeightG(value, decimals = 0) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '0';
+  return parsed.toFixed(decimals).replace(/\.00$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+}
+
+function getRecetteBaseWeight() {
+  return RECETTE.ingredients.reduce((acc, row) => acc + (parseFloat(row.poids) || 0), 0);
+}
+
+function getProductionWeight() {
+  return parseDecimalInput(PROD.poidsProduit) || getRecetteBaseWeight();
+}
+
+function getProductionScaleRatio() {
+  const baseWeight = getRecetteBaseWeight();
+  const productionWeight = getProductionWeight();
+  return baseWeight > 0 && productionWeight > 0 ? productionWeight / baseWeight : 1;
+}
+
+function getEmballageById(id) {
+  return (RESSOURCES.emballages || []).find(item => String(item.id) === String(id)) || null;
+}
+
+function addProdContenantRow(prefill = {}) {
+  if (!RESSOURCES.emballages.length) {
+    toast('Ajoutez d\'abord des emballages dans les ressources', 'error');
+    return;
+  }
+  const container = document.getElementById('prodContenantsRows');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'decision-emballage-row';
+  row.style.marginBottom = '8px';
+  const selectedId = String(prefill.id || RESSOURCES.emballages[0].id || '');
+  const quantity = String(prefill.quantite || '1');
+  row.innerHTML = `
+    <select class="form-select" data-field="emballage" style="flex:1">
+      ${RESSOURCES.emballages.map(item => {
+        const selected = String(item.id) === selectedId ? 'selected' : '';
+        return `<option value="${escHtml(item.id)}" ${selected}>${escHtml(item.nom)}</option>`;
+      }).join('')}
+    </select>
+    <input class="form-input" data-field="quantite" type="number" min="1" step="1" value="${escHtml(quantity)}" placeholder="Qte" style="width:96px">
+    <button class="btn btn-ghost btn-icon" onclick="this.closest('.decision-emballage-row').remove()">✕</button>
+  `;
+  container.appendChild(row);
+}
+
+function getSelectedProdContenants() {
+  return [...document.querySelectorAll('#prodContenantsRows .decision-emballage-row')].map(row => {
+    const emballageId = row.querySelector('[data-field="emballage"]')?.value || '';
+    const quantite = Math.max(1, parseInt(row.querySelector('[data-field="quantite"]')?.value || '1', 10) || 1);
+    const emballage = getEmballageById(emballageId);
+    if (!emballage) return null;
+    return {
+      id: emballage.id,
+      nom: emballage.nom,
+      quantite,
+      cout: emballage.cout || 0
+    };
+  }).filter(Boolean);
+}
+
+function getProdContenantsSummary(containers = PROD.contenants || []) {
+  if (!containers.length) return '';
+  return containers.map(item => `${item.nom} x ${item.quantite}`).join(', ');
+}
+
+function parseHistoricContenants(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function parseFormatExportList(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return ['pdf'];
+  const formats = raw.split(',').map(x => x.trim()).filter(Boolean);
+  return formats.length ? [...new Set(formats)] : ['pdf'];
+}
+
+function refreshLabelFormatSelection() {
+  document.querySelectorAll('.prod-label-card').forEach(card => {
+    const format = card.dataset.format || '';
+    card.classList.toggle('active', (PROD.formats || []).includes(format));
+  });
+  const isZplSelected = (PROD.formats || []).some(format => format !== 'pdf');
+  document.getElementById('prodZplConfig').style.display = isZplSelected ? 'block' : 'none';
+}
+
+async function openProductionFromHistory(productionId) {
+  const rows = PRODUCTIONS.filter(p => String(p.id_production || '') === String(productionId || ''));
+  if (!rows.length) { toast('Production introuvable', 'error'); return; }
+  const first = rows[0];
+  const recette = RECETTES.find(r => String(r.nom || '').trim().toLowerCase() === String(first.recette || '').trim().toLowerCase());
+  if (!recette) { toast('Recette introuvable pour cette production', 'error'); return; }
+
+  showPage('recettes');
+  await openRecette(recette.id, recette.nom);
+  openModalProduction();
+
+  PROD.lotRecette = first.lot_recette || '';
+  PROD.poidsNet = first.poids_net || '';
+  PROD.poidsProduit = first.poids_recette_produite || first.poids_recette_base || '';
+  PROD.dateType = first.dlc_ddm_type || 'DLC';
+  PROD.dateLimite = first.dlc_ddm || '';
+  PROD.mentions = first.mentions || '';
+  PROD.formats = parseFormatExportList(first.format_export);
+  PROD.historyMode = true;
+  PROD.format = PROD.formats[0] || 'pdf';
+  PROD.nbEtiquettes = first.nb_etiquettes || '1';
+  PROD.contenants = parseHistoricContenants(first.contenants_json);
+  PROD.lotsIng = {};
+  PROD.dateIng = {};
+
+  rows.forEach(row => {
+    if (row.ingredient_id) {
+      PROD.lotsIng[row.ingredient_id] = row.lot_ingredient || '';
+      PROD.dateIng[row.ingredient_id] = row.dlc_ddm_ingredient || '';
+    }
+  });
+
+  document.getElementById('prodLotRecette').value = PROD.lotRecette;
+  document.getElementById('prodPoidsNet').value = PROD.poidsNet;
+  document.getElementById('prodPoidsProduit').value = PROD.poidsProduit || '';
+  document.getElementById('prodDateLimite').value = PROD.dateLimite;
+  document.getElementById('prodMentions').value = PROD.mentions;
+  document.getElementById('prodNbEtiquettes').value = PROD.nbEtiquettes || '1';
+  document.getElementById('btnProdExport').innerHTML = 'Imprimer';
+  setProdDateType(PROD.dateType);
+
+  document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="lot"]').forEach(inp => {
+    inp.value = PROD.lotsIng[inp.dataset.ingId] || '';
+  });
+  document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="date"]').forEach(inp => {
+    inp.value = PROD.dateIng[inp.dataset.ingId] || '';
+  });
+
+  const contenantsRows = document.getElementById('prodContenantsRows');
+  if (contenantsRows) {
+    contenantsRows.innerHTML = '';
+    if ((PROD.contenants || []).length) PROD.contenants.forEach(item => addProdContenantRow(item));
+    else if (RESSOURCES.emballages.length) addProdContenantRow({ quantite: 1 });
+  }
+
+  refreshLabelFormatSelection();
+  prodGoStep(2);
+}
 
 function openModalProduction() {
   if (!hasModuleAccess('production')) { toast('Module Production non disponible avec votre abonnement', 'error'); return; }
   if (!RECETTE.id) return;
-  PROD = { lotRecette:'', poidsNet:'', dateType:'DLC', dateLimite:'', mentions:'', lotsIng:{}, format:'pdf' };
+  const baseWeight = getRecetteBaseWeight();
+  PROD = { lotRecette:'', poidsNet:'', poidsProduit:String(formatWeightG(baseWeight)), dateType:'DLC', dateLimite:'', mentions:'', lotsIng:{}, dateIng:{}, contenants:[], nbEtiquettes:'1', formats:['pdf'], historyMode:false, format:'pdf' };
   document.getElementById('prodNbEtiquettes').value = '1';
+  document.getElementById('btnProdExport').innerHTML = 'Enregistrer';
 
   const nom = document.getElementById('nom').value || 'Recette';
   document.getElementById('prodRecetteName').textContent = nom;
   document.getElementById('prodLotRecette').value = '';
   document.getElementById('prodPoidsNet').value = '';
+  document.getElementById('prodPoidsProduit').value = formatWeightG(baseWeight);
   document.getElementById('prodMentions').value = '';
   document.getElementById('prodDateLimite').value = '';
   setProdDateType('DLC');
@@ -3171,7 +3373,7 @@ function openModalProduction() {
   const seen = new Set();
 
   // Calcul poids total pour QUID
-  const poidsTotal = RECETTE.ingredients.reduce((acc, r) => acc + (parseFloat(r.poids) || 0), 0);
+  const poidsTotal = getRecetteBaseWeight();
 
   RECETTE.ingredients.forEach(row => {
     const ing = ING.find(x => x.id == row.ingredient);
@@ -3222,8 +3424,15 @@ div.innerHTML = `
     cont.appendChild(div);
   });
 
+  const contenantsRows = document.getElementById('prodContenantsRows');
+  if (contenantsRows) {
+    contenantsRows.innerHTML = '';
+    if (RESSOURCES.emballages.length) addProdContenantRow({ quantite: 1 });
+  }
+
   document.getElementById('prodPrinterIp').value   = '';
   document.getElementById('prodPrinterPort').value = '9100';
+  refreshLabelFormatSelection();
 
   prodGoStep(1);
   openModal('modalProduction');
@@ -3237,11 +3446,12 @@ function setProdDateType(type) {
 }
 
 function selectLabelFormat(el, format) {
-  document.querySelectorAll('.prod-label-card').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  PROD.format = format;
-  const isZpl = format !== 'pdf';
-  document.getElementById('prodZplConfig').style.display = isZpl ? 'block' : 'none';
+  const selected = new Set(PROD.formats || []);
+  if (selected.has(format) && selected.size > 1) selected.delete(format);
+  else selected.add(format);
+  PROD.formats = [...selected];
+  PROD.format = selected.has(format) ? format : (PROD.formats[0] || 'pdf');
+  refreshLabelFormatSelection();
   renderLabelPreview();
 }
 
@@ -3251,10 +3461,15 @@ function prodGoStep(n) {
     if (!lot) { toast('Entrez un n° de lot pour la recette', 'error'); return; }
     const date = document.getElementById('prodDateLimite').value;
     if (!date) { toast('Choisissez une date limite', 'error'); return; }
+    const poidsProduit = parseDecimalInput(document.getElementById('prodPoidsProduit').value);
+    if (!poidsProduit) { toast('Indiquez le poids total produit', 'error'); return; }
     PROD.lotRecette = lot;
     PROD.poidsNet   = document.getElementById('prodPoidsNet').value.trim();
+    PROD.poidsProduit = String(poidsProduit);
     PROD.dateLimite = date;
     PROD.mentions   = document.getElementById('prodMentions').value.trim();
+    PROD.contenants = getSelectedProdContenants();
+    PROD.nbEtiquettes = document.getElementById('prodNbEtiquettes').value.trim() || '1';
     document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="lot"]').forEach(inp => {
       PROD.lotsIng[inp.dataset.ingId] = inp.value.trim();
     });
@@ -3815,8 +4030,11 @@ function buildRecap() {
     zpl_57x32:'Étiquette 57×32mm', zpl_round60:'Étiquette ronde 60mm',
     zpl_101x51:'Étiquette 101×51mm', zpl_100x150:'Étiquette 100×150mm'
   };
+  const formatsSelected = (PROD.formats || ['pdf']).map(f => formatNames[f] || f).join(', ');
 
-  const poidsTotal = RECETTE.ingredients.reduce((acc, r) => acc + (parseFloat(r.poids) || 0), 0);
+  const poidsTotal = getRecetteBaseWeight();
+  const poidsProduit = getProductionWeight();
+  const contenantsTxt = getProdContenantsSummary();
   let lotsHtml = '';
   const seen = new Set();
 
@@ -3867,9 +4085,12 @@ function buildRecap() {
       <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">N° de lot</span><br><strong style="color:#e07c20">${escHtml(PROD.lotRecette)}</strong></div>
       <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">${dateLabel}</span><br><strong>${dateStr}</strong></div>
       ${PROD.poidsNet ? `<div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Poids net</span><br><strong>${escHtml(PROD.poidsNet)} g</strong></div>` : ''}
-      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Format</span><br><strong>${formatNames[PROD.format]}</strong></div>
+      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Poids recette base</span><br><strong>${formatWeightG(poidsTotal)} g</strong></div>
+      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Poids produit</span><br><strong>${formatWeightG(poidsProduit)} g</strong></div>
+      <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Formats</span><br><strong>${escHtml(formatsSelected)}</strong></div>
       <div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3)">Nb étiquettes</span><br><strong>${document.getElementById('prodNbEtiquettes').value || 1}</strong></div>
     </div>
+    ${contenantsTxt ? `<div style="margin-bottom:12px;font-size:12px;color:var(--text2)"><strong>Contenants :</strong> ${escHtml(contenantsTxt)}</div>` : ''}
     <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px">Lots ingrédients</div>
     ${lotsHtml || '<span style="color:var(--text3);font-size:12px">Aucun lot renseigné</span>'}
     ${PROD.mentions ? `<div style="margin-top:12px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:10px"><strong>Mentions légales :</strong> ${escHtml(PROD.mentions)}</div>` : ''}
@@ -3879,17 +4100,19 @@ async function prodExport() {
   const btn = document.getElementById('btnProdExport');
   btnLoading(btn, true);
 
-  saveProductionTraceOptimistic();
-  if (PROD.format === 'pdf') {
-    await prodExportPdf();
-  } else {
-    prodExportZpl();
+  const formats = (PROD.formats || []).length ? [...new Set(PROD.formats)] : ['pdf'];
+  if (!PROD.historyMode) saveProductionTraceOptimistic();
+  for (const format of formats) {
+    PROD.format = format;
+    if (format === 'pdf') await prodExportPdf(false);
+    else prodExportZpl(false);
   }
+  closeModal('modalProduction');
   btnLoading(btn, false);
 }
 
 // ── Export PDF Production (généré côté client, ouvert pour impression) ──
-async function prodExportPdf() {
+async function prodExportPdf(closeAfter = true) {
   const nom = document.getElementById('nom').value || 'Recette';
   const dateStr = PROD.dateLimite ? new Date(PROD.dateLimite).toLocaleDateString('fr-FR') : '—';
   const dateLabel = PROD.dateType === 'DLC' ? "À consommer jusqu'au" : "À consommer de préférence avant le";
@@ -3897,10 +4120,14 @@ async function prodExportPdf() {
 
   // Calcul nutri complet
   let nutri = { energie_kj:0, energie:0, proteines:0, glucides:0, sucres:0, lipides:0, ags:0, sel:0, fibres:0 };
+  const poidsRecetteBase = getRecetteBaseWeight();
+  const poidsRecetteProduite = getProductionWeight();
+  const ratioProduction = getProductionScaleRatio();
+  const contenantsTxt = getProdContenantsSummary();
   let poidsTotal = 0, prixTotal = 0;
   RECETTE.ingredients.forEach(row => {
     const ing = ING.find(x=>x.id==row.ingredient); if(!ing) return;
-    const p = parseFloat(row.poids)||0; poidsTotal += p;
+    const p = (parseFloat(row.poids)||0) * ratioProduction; poidsTotal += p;
     nutri.energie_kj += (parseFloat(ing.energie_kjoules)||0)*p/100;
     nutri.energie    += (parseFloat(ing.energie_kcal)||0)*p/100;
     nutri.proteines  += (parseFloat(ing.proteines_g)||0)*p/100;
@@ -3949,7 +4176,7 @@ async function prodExportPdf() {
   const poidsTotal2 = poidsTotal;
   const compoRows = RECETTE.ingredients.map(row => {
     const ing = ING.find(x=>x.id==row.ingredient); if(!ing) return '';
-    const p = parseFloat(row.poids)||0;
+    const p = (parseFloat(row.poids)||0) * ratioProduction;
     const allergs = ing.allergenes ? String(ing.allergenes).split(',').map(a=>a.trim().toUpperCase()).filter(Boolean) : [];
     const lot = PROD.lotsIng[ing.id] || '—';
     const dateIng = (PROD.dateIng || {})[ing.id] || '';
@@ -4010,10 +4237,16 @@ async function prodExportPdf() {
   </div>
   ${PROD.poidsNet ? `<div class="info-block"><div class="info-label">Poids net du contenant</div><div class="info-value">${escHtml(PROD.poidsNet)} g</div></div>` : ''}
   <div class="info-block">
-    <div class="info-label">Poids total recette</div>
-    <div class="info-value">${poidsTotal} g</div>
+    <div class="info-label">Poids recette base</div>
+    <div class="info-value">${formatWeightG(poidsRecetteBase)} g</div>
+  </div>
+  <div class="info-block">
+    <div class="info-label">Poids recette produite</div>
+    <div class="info-value">${formatWeightG(poidsRecetteProduite)} g</div>
   </div>
 </div>
+
+${contenantsTxt ? `<div style="margin:0 0 14px;font-size:12px;color:#4a6358"><strong>Contenants :</strong> ${escHtml(contenantsTxt)}</div>` : ''}
 
 <h3>🏷️ Étiquetage ingrédients</h3>
 <div style="font-size:10px;color:#8aaa99;margin-bottom:6px;font-style:italic">Triés par ordre pondéral décroissant · Allergènes <u><strong>soulignés en gras</strong></u> · QUID en % si activé</div>
@@ -4070,10 +4303,10 @@ ${PROD.mentions ? `<h3>Mentions légales</h3><div style="border:1.5px solid #d6e
   } else {
     toast('Autorisez les popups pour ouvrir la fiche', 'error');
   }
-  closeModal('modalProduction');
+  if (closeAfter) closeModal('modalProduction');
 }
 // ── Export ZPL ──
-function prodExportZpl() {
+function prodExportZpl(closeAfter = true) {
   const zpl  = buildZpl();
   const ip   = document.getElementById('prodPrinterIp').value.trim();
   const port = document.getElementById('prodPrinterPort').value.trim() || '9100';
@@ -4089,7 +4322,7 @@ function prodExportZpl() {
     .then(r => {
       if (r.ok) {
         toast('Imprimé ✓', 'success');
-        closeModal('modalProduction');
+        if (closeAfter) closeModal('modalProduction');
       } else {
         throw new Error('Proxy error ' + r.status);
       }
@@ -4101,7 +4334,7 @@ function prodExportZpl() {
   } else {
     downloadZpl(zpl);
     toast('Fichier .zpl téléchargé', 'success');
-    closeModal('modalProduction');
+    if (closeAfter) closeModal('modalProduction');
   }
 }
 function downloadZpl(zpl) {
@@ -5794,6 +6027,25 @@ async function deletePlanningTaskRemote() {
   }
 }
 
+async function purgePlanningDoneRemote() {
+  if (!confirm('Purger toutes les taches marquees comme faites ?')) return
+  const previousItems = planningItems.map(item => ({ ...item }))
+  planningItems = planningItems.filter(item => String(item.statut || '').trim().toLowerCase() !== 'fait')
+  renderPlanningCalendarEvents(planningItems)
+  toast('Taches faites purgees instantanement', 'success')
+
+  try {
+    const r = await fetch(API + '?action=purgePlanningDone')
+    if (!r.ok) throw new Error('Impossible de purger les taches faites')
+    loadPlanningCalendar({ silent: true })
+  } catch (e) {
+    console.error('Erreur purge planning', e)
+    planningItems = previousItems
+    renderPlanningCalendarEvents(planningItems)
+    toast('Impossible de purger les taches faites', 'error')
+  }
+}
+
 function openPlanningFromCurrentRecette() {
   if (!hasModuleAccess('planning')) {
     toast('Module Planning non disponible avec votre abonnement', 'error')
@@ -6243,8 +6495,17 @@ function savePlanningTaskOld() {
           <input class="form-input" id="prodPoidsNet" type="text" inputmode="decimal" placeholder="Ex: 250">
         </div>
         <div class="form-group">
+          <label class="form-label">Poids total produit (g) *</label>
+          <input class="form-input" id="prodPoidsProduit" type="text" inputmode="decimal" placeholder="Ex: 5000">
+        </div>
+        <div class="form-group">
           <label class="form-label">Nombre d'étiquettes</label>
           <input class="form-input" id="prodNbEtiquettes" type="number" min="1" value="1" placeholder="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contenants choisis <span style="font-weight:400;color:var(--text3)">(facultatif)</span></label>
+          <div id="prodContenantsRows" style="display:flex;flex-direction:column;gap:8px"></div>
+          <button class="btn btn-secondary btn-sm mt-2" type="button" onclick="addProdContenantRow()">＋ Ajouter un contenant</button>
         </div>
       </div>
       <!-- DLC / DDM toggle -->
@@ -6280,7 +6541,7 @@ function savePlanningTaskOld() {
 
     <!-- STEP 2 : FORMAT ÉTIQUETTE -->
     <div id="prodStep2" style="display:none">
-      <div class="modal-title" style="margin-top:8px">🏷️ Format d'étiquette</div>
+      <div class="modal-title" style="margin-top:8px">🏷️ Formats à imprimer</div>
 
       <div class="prod-label-grid" id="prodLabelGrid">
         <div class="prod-label-card active" onclick="selectLabelFormat(this,'pdf')" data-format="pdf">
@@ -6358,7 +6619,7 @@ function savePlanningTaskOld() {
       <div id="prodRecap" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:18px;font-size:13px;line-height:1.8"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="prodGoStep(2)">← Retour</button>
-        <button class="btn btn-primary" id="btnProdExport" onclick="prodExport()" style="background:linear-gradient(135deg,#f0a500,#e07c20);box-shadow:0 4px 14px rgba(240,165,0,0.25)">🚀 Exporter</button>
+        <button class="btn btn-primary" id="btnProdExport" onclick="prodExport()" style="background:linear-gradient(135deg,#f0a500,#e07c20);box-shadow:0 4px 14px rgba(240,165,0,0.25)">Enregistrer</button>
       </div>
     </div>
 
