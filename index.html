@@ -1856,22 +1856,25 @@ async function init() {
   }
 }
 function applyRoleRestrictions() {
-  if (hasModuleAccess('equipe')) {
-    // Ajouter entrée Équipe dans le menu latéral
-    const sidebar = document.querySelector('.sidebar');
-    if (!document.getElementById('nav-equipe')) {
-  const navDecision = document.getElementById('nav-decision');
-  const navEquipe = document.createElement('div');
-  navEquipe.id = 'nav-equipe';
-  navEquipe.className = 'nav-item';
-  navEquipe.innerHTML = '<span class="icon">👥</span> Équipe';
-  navEquipe.onclick = () => showUserList();
-  navDecision.insertAdjacentElement('afterend', navEquipe);
-}
-    return;
+  if (isAdmin()) {
+    // Admin : boutons d'ajout TOUJOURS visibles (peu importe l'abonnement)
+    // On ajoute l'entrée "Équipe" dans le menu seulement si l'abonnement le permet
+    if (hasModuleAccess('equipe')) {
+      const sidebar = document.querySelector('.sidebar');
+      if (!document.getElementById('nav-equipe')) {
+        const navDecision = document.getElementById('nav-decision');
+        const navEquipe = document.createElement('div');
+        navEquipe.id = 'nav-equipe';
+        navEquipe.className = 'nav-item';
+        navEquipe.innerHTML = '<span class="icon">👥</span> Équipe';
+        navEquipe.onclick = () => showUserList();
+        navDecision.insertAdjacentElement('afterend', navEquipe);
+      }
+    }
+    return; // admin : les 4 boutons restent visibles, même en niveau 1
   }
 
-  // Masquer les boutons admin pour les employés
+  // Employé : on cache les boutons d'ajout admin
   [
     '[onclick="openModalIngredient()"]',
     '[onclick="openModalFournisseur()"]',
@@ -1884,6 +1887,7 @@ function applyRoleRestrictions() {
   const btnDanger = document.querySelector('.btn-danger[onclick="removeRecette()"]');
   if (btnDanger) btnDanger.style.display = 'none';
 }
+
 function applyAbonnementRestrictions() {
   const navDecision = document.getElementById('nav-decision');
   const navPlanning = document.getElementById('nav-planning');
