@@ -635,6 +635,21 @@
     display: inline-block !important;
     margin-right: 6px;
   }
+  .stock-produit-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+  }
+  .stock-produit-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stock-produit-nom strong { font-weight: 600; }
+  .stock-produit-lots { flex-shrink: 0; width: 80px; text-align: right; font-size: 13px; color: var(--text3); }
+  .stock-produit-qte { flex-shrink: 0; width: 100px; text-align: right; font-weight: 700; color: var(--g3); }
+  @media (max-width: 500px) {
+    .stock-produit-row { flex-wrap: wrap; gap: 4px 12px; padding: 10px 12px; }
+    .stock-produit-nom { flex: 1 1 100%; margin-bottom: 2px; }
+    .stock-produit-nom strong { font-size: 14px; }
+    .stock-produit-lots { width: auto; flex: 1; text-align: left; font-size: 12px; }
+    .stock-produit-qte { width: auto; flex-shrink: 0; font-size: 14px; }
+  }
   @media (max-width: 600px) {
     .stock-alert-bar { flex-direction: column; }
     .stat-card { min-width: auto; }
@@ -7081,10 +7096,10 @@ function renderStock() {
   });
   const produits = Object.values(produitsMap);
   document.getElementById('stockProduitsBody').innerHTML = produits.map(p => `
-    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--border)">
-      <div style="flex:1"><strong>${escHtml(p.produit)}</strong></div>
-      <div style="flex:0 0 100px;text-align:right">${p.lots} lot${p.lots > 1 ? 's' : ''}</div>
-      <div style="flex:0 0 120px;text-align:right;font-weight:700;color:var(--g3)">${p.qte.toFixed(1)} ${p.unite}</div>
+    <div class="stock-produit-row">
+      <div class="stock-produit-nom"><strong>${escHtml(p.produit)}</strong></div>
+      <div class="stock-produit-lots">${p.lots} lot${p.lots > 1 ? 's' : ''}</div>
+      <div class="stock-produit-qte">${p.qte.toFixed(1)} ${p.unite}</div>
     </div>
   `).join('') || '<div class="empty"><p>Aucun produit</p></div>';
 }
