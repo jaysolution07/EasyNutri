@@ -2693,13 +2693,14 @@ function buildProductionPayload() {
       if (PROD.lotAllocations && PROD.lotAllocations.length) {
         return PROD.lotAllocations.map(alloc => {
           const ing = ING.find(x => x.id == alloc.ingId) || {};
-          const poidsLine = alloc.qty || 0;
+          const poidsLine = alloc.qty || 0;             // en grammes pour les calculs nutrition
+          const stockPoids = alloc.stockQty || poidsLine; // dans l'unité du stock pour le backend
           return {
             ingredient_id: alloc.ingId,
             ingredient: alloc.ingNom || '',
             lot_ingredient: alloc.lot || '',
             dlc_ddm_ingredient: alloc.dlc || '',
-            poids_ingredient: formatWeightG(poidsLine, 2),
+            poids_ingredient: formatWeightG(stockPoids, 3),
             stock_id: alloc.stockId || '',
             energie_kj: poidsTotal > 0 ? ((parseFloat(ing.energie_kjoules) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
             energie_kcal: poidsTotal > 0 ? ((parseFloat(ing.energie_kcal) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
@@ -3581,6 +3582,7 @@ async function openModalProduction() {
     } catch(e) { /* stock non disponible */ }
   }
 
+  PROD.lotAllocations = []; // Réinitialiser avant le rendu
   RECETTE.ingredients.forEach(row => {
     const ing = ING.find(x => x.id == row.ingredient);
     if (!ing || seen.has(ing.id)) return;
@@ -3618,6 +3620,20 @@ async function openModalProduction() {
       const fqty = formatWeightG(neededQty, 1);
       const { allocations, manque } = autoAllocateLotsFIFO(ing, neededQty, stockLotsMap);
       
+      // Stocker les allocations dans PROD.lotAllocations (utilisé pour le save)
+      allocations.forEach(a => {
+        PROD.lotAllocations.push({
+          ingId: a.ingId,
+          ingNom: a.ingNom,
+          stockId: a.stockId,
+          lot: a.lot,
+          dlc: a.dlc,
+          qty: a.qty,
+          stockQty: a.stockQty,
+          stockUnite: a.stockUnite
+        });
+      });
+      
       let lotsLines = '';
       if (allocations.length) {
         lotsLines = allocations.map((a, idx) => `
@@ -3627,6 +3643,7 @@ async function openModalProduction() {
             <input class="form-input stock-lot-qty" type="number" step="any"
               data-ing-id="${ing.id}" data-stock-id="${escHtml(a.stockId)}"
               data-lot="${escHtml(a.lot)}" data-dlc="${escHtml(a.dlc || '')}"
+              data-stock-unite="${escHtml(a.stockUnite || 'g')}"
               value="${a.qty}" max="${a.maxQty}"
               style="width:90px;font-size:12px;padding:4px 6px;text-align:right"
               onchange="onLotQtyChange(this, '${ing.id}', ${fqty})">
@@ -3642,6 +3659,17 @@ async function openModalProduction() {
           Total alloué : <span data-statut>${statut}</span>
         </div>`;
       } else {
+        // Même sans lot, ajouter l'ingrédient à PROD.lotAllocations pour qu'il soit enregistré
+        PROD.lotAllocations.push({
+          ingId: ing.id,
+          ingNom: ing.nom,
+          stockId: '',
+          lot: '',
+          dlc: '',
+          qty: neededQty,
+          stockQty: gramsToStockQty(neededQty, ing.unite || 'g'),
+          stockUnite: ing.unite || 'g'
+        });
         lotsLines = `<div style="font-size:11px;color:var(--text3);padding:4px 0">Aucun lot disponible en stock pour ${escHtml(ing.nom)}</div>`;
       }
       
@@ -3763,6 +3791,7 @@ function onLotQtyChange(inputEl, ingId, neededQty) {
     const stockId = inp.dataset.stockId;
     const lot = inp.dataset.lot;
     const dlc = inp.dataset.dlc;
+    const stockUnite = inp.dataset.stockUnite || 'g';
     const ing = ING.find(x => x.id == ingId);
     newAllocations.push({
       ingId: ingId,
@@ -3770,7 +3799,9 @@ function onLotQtyChange(inputEl, ingId, neededQty) {
       stockId: stockId,
       lot: lot,
       dlc: dlc,
-      qty: qty
+      qty: qty,
+      stockQty: gramsToStockQty(qty, stockUnite), // dans l'unité du stock
+      stockUnite: stockUnite
     });
     totalAlloue += qty;
   });
@@ -4545,10 +4576,19 @@ async function prodExportPdf(closeAfter = true) {
     const ing = ING.find(x=>x.id==row.ingredient); if(!ing) return '';
     const p = (parseFloat(row.poids)||0) * ratioProduction;
     const allergs = ing.allergenes ? String(ing.allergenes).split(',').map(a=>a.trim().toUpperCase()).filter(Boolean) : [];
-    const lot = PROD.lotsIng[ing.id] || '—';
-    const dateIng = (PROD.dateIng || {})[ing.id] || '';
-    const dlcLabel = ing.dlc_type || 'DDM';
-    const lotCell = escHtml(lot) + (dateIng ? `<br><span style="font-size:10px;font-weight:400;color:${dlcLabel==='DLC'?'#e05c5c':'#9a6500'}">${dlcLabel} : ${escHtml(dateIng)}</span>` : '');
+    // Essayer PROD.lotAllocations d'abord (multi-lots FIFO), puis PROD.lotsIng (mode manuel)
+    const ingAllocs = (PROD.lotAllocations || []).filter(a => String(a.ingId) === String(ing.id));
+    let lotCell;
+    if (ingAllocs.length) {
+      lotCell = ingAllocs.map(a =>
+        escHtml(a.lot) + (a.dlc ? `<br><span style="font-size:10px;font-weight:400;color:#e05c5c">DLC : ${escHtml(a.dlc)}</span>` : '')
+      ).join('<br>');
+    } else {
+      const lot = PROD.lotsIng[ing.id] || '—';
+      const dateIng = (PROD.dateIng || {})[ing.id] || '';
+      const dlcLabel = ing.dlc_type || 'DDM';
+      lotCell = escHtml(lot) + (dateIng ? `<br><span style="font-size:10px;font-weight:400;color:${dlcLabel==='DLC'?'#e05c5c':'#9a6500'}">${dlcLabel} : ${escHtml(dateIng)}</span>` : '');
+    }
     const quidStr = row.quid && poidsTotal2 > 0 ? ` <span style="color:#e07c20;font-weight:700">(${(p/poidsTotal2*100).toFixed(1)}%)</span>` : '';
     const prixLigne = (() => { const pk=parseFloat(ing.prix_kg)||0; if(!pk) return '—'; const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; return (p/eq*pk).toFixed(2)+' €'; })();
     return `<tr>
@@ -6797,6 +6837,12 @@ function stockQtyToGrams(qty, unite) {
   // g, ml, pièce, unité → pas de conversion
   return qty;
 }
+function gramsToStockQty(grams, unite) {
+  const u = (unite || '').trim().toLowerCase();
+  if (u === 'kg' || u === 'kilo' || u === 'kilos' || u === 'kilogramme' || u === 'kilogrammes') return grams / 1000;
+  if (u === 'l' || u === 'litre' || u === 'litres' || u === 'ltre' || u === 'ltres') return grams / 1000;
+  return grams;
+}
 
 function autoAllocateLotsFIFO(ing, neededQty, stockLotsMap) {
   const key = String(ing.nom || '').trim().toLowerCase();
@@ -6822,15 +6868,19 @@ function autoAllocateLotsFIFO(ing, neededQty, stockLotsMap) {
     const pris = Math.min(dispo, reste);
     // L'unité affichée devient 'g' si on a converti depuis kg/L
     const displayUnite = dispo !== s.quantite ? 'g' : s.unite;
+    // Quantité dans l'unité du stock (pour le payload backend)
+    const stockQty = gramsToStockQty(pris, s.unite);
     allocations.push({
       ingId: ing.id,
       ingNom: ing.nom,
       stockId: s.id_stock,
       lot: s.lot,
       dlc: s.dlc_ddm,
-      qty: pris,
+      qty: pris,         // en grammes (pour l'affichage)
+      stockQty: stockQty, // dans l'unité du stock (pour le backend)
+      stockUnite: s.unite, // unité originale du stock
       unite: displayUnite,
-      maxQty: dispo
+      maxQty: dispo       // en grammes
     });
     reste -= pris;
   }
