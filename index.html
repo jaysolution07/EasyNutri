@@ -588,6 +588,59 @@
   }
 
   /* ════════════════════════════════
+     MODULE STOCK
+  ════════════════════════════════ */
+  .stock-alert-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    flex: 1;
+    min-width: 140px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-card .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--g3);
+    line-height: 1;
+  }
+  .stat-card .stat-label {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stock-alert-dlc {
+    background: rgba(240,165,0,0.08);
+    border: 1.5px solid rgba(240,165,0,0.3);
+  }
+  .stock-alert-dlc .stat-num { color: #9a6500; }
+  .stock-alert-low {
+    background: rgba(224,92,92,0.08);
+    border: 1.5px solid rgba(224,92,92,0.2);
+  }
+  .stock-alert-low .stat-num { color: var(--danger); }
+  .stock-adjust-input {
+    width: 100px !important;
+    display: inline-block !important;
+    margin-right: 6px;
+  }
+  @media (max-width: 600px) {
+    .stock-alert-bar { flex-direction: column; }
+    .stat-card { min-width: auto; }
+  }
+
+  /* ════════════════════════════════
      MODULE PRODUCTION
   ════════════════════════════════ */
   .prod-stepper {
@@ -1035,6 +1088,7 @@
     <div class="nav-item" onclick="showPage('ingredients')" id="nav-ingredients"><span class="icon">🥦</span> Ingrédients</div>
     <div class="nav-item" onclick="showPage('fournisseurs')" id="nav-fournisseurs"><span class="icon">🏭</span> Fournisseurs</div>
     <div class="nav-item" onclick="showPage('reception')" id="nav-reception"><span class="icon">🚚</span> Reception</div>
+    <div class="nav-item" onclick="showPage('stock')" id="nav-stock"><span class="icon">📦</span> Stock</div>
     <div class="nav-item" onclick="showPage('production')" id="nav-production"><span class="icon">🔍</span> Traçabilité</div>
 <div class="nav-item" onclick="showPage('decision')" id="nav-decision">
   <span class="icon">📊</span> Décision
@@ -1083,6 +1137,12 @@
           <div class="home-card-icon">🚚</div>
           <div class="home-card-title">Reception</div>
           <div class="home-card-desc">Enregistrez les BL, lots, dates limites et controles temperature</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+        <div class="home-card" id="home-card-stock" onclick="showPage('stock')">
+          <div class="home-card-icon">📦</div>
+          <div class="home-card-title">Stock</div>
+          <div class="home-card-desc">Suivez vos stocks, lots, DLC et gérez les inventaires</div>
           <div class="home-card-arrow">→</div>
         </div>
         <div class="home-card" id="home-card-production" onclick="showPage('production')">
@@ -1286,7 +1346,10 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">Dernieres receptions</div>
-          <div class="search-wrap" style="width:220px"><input class="form-input" id="searchReception" placeholder="BL, lot, produit..." style="padding:7px 10px 7px 34px;font-size:12px" oninput="renderReceptionsList()"></div>
+          <div class="flex gap-2" style="align-items:center">
+            <div class="search-wrap" style="width:220px"><input class="form-input" id="searchReception" placeholder="BL, lot, produit..." style="padding:7px 10px 7px 34px;font-size:12px" oninput="renderReceptionsList()"></div>
+            <button class="btn btn-secondary btn-sm" onclick="exportReceptionsCsv()" title="Exporter en CSV">⬇️ CSV</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table class="table-sticky">
@@ -1771,6 +1834,7 @@ function hasModuleAccess(moduleName) {
     case 'production':
     case 'decision':
     case 'planning':
+    case 'stock':
       return abo >= 3;
     default:
       return false;
@@ -1823,6 +1887,7 @@ async function init() {
     await loadRecettes();
     if (hasModuleAccess('reception')) await loadReceptions();
     if (hasModuleAccess('production')) await loadProductions();
+    if (hasModuleAccess('stock')) await loadStock();
 
   splashProgress(100, 'Prêt !');
     document.getElementById('statusDot').className = 'badge badge-green';
@@ -1891,12 +1956,14 @@ function applyRoleRestrictions() {
 function applyAbonnementRestrictions() {
   const navDecision = document.getElementById('nav-decision');
   const navPlanning = document.getElementById('nav-planning');
+  const navStock = document.getElementById('nav-stock');
   const navEquipe = document.getElementById('nav-equipe');
   const navReception = document.getElementById('nav-reception');
   const navProduction = document.getElementById('nav-production');
 
   const homeDecision = document.getElementById('home-card-decision');
   const homePlanning = document.getElementById('home-card-planning');
+  const homeStock = document.getElementById('home-card-stock');
   const homeReception = document.getElementById('home-card-reception');
   const homeProduction = document.getElementById('home-card-production');
   const homeEquipe = document.getElementById('homeCardEquipe');
@@ -1904,12 +1971,14 @@ function applyAbonnementRestrictions() {
   const btnProduction = document.querySelector('[onclick="openModalProduction()"]');
 
   if (navReception) navReception.style.display = hasModuleAccess('reception') ? '' : 'none';
+  if (navStock) navStock.style.display = hasModuleAccess('stock') ? '' : 'none';
   if (navProduction) navProduction.style.display = hasModuleAccess('production') ? '' : 'none';
   if (navDecision) navDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
   if (navPlanning) navPlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
   if (navEquipe) navEquipe.style.display = hasModuleAccess('equipe') ? '' : 'none';
 
   if (homeReception) homeReception.style.display = hasModuleAccess('reception') ? '' : 'none';
+  if (homeStock) homeStock.style.display = hasModuleAccess('stock') ? '' : 'none';
   if (homeProduction) homeProduction.style.display = hasModuleAccess('production') ? '' : 'none';
   if (homeDecision) homeDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
   if (homePlanning) homePlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
@@ -2100,7 +2169,7 @@ function showPage(p) {
     p = 'accueil';
   }
 
-  ['accueil','recettes','ingredients','fournisseurs','reception','production','decision','planning'].forEach(name => {
+  ['accueil','recettes','ingredients','fournisseurs','reception','production','decision','planning','stock'].forEach(name => {
     const el = document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1));
     if (el) el.style.display = p === name ? 'block' : 'none';
 
@@ -2129,6 +2198,10 @@ function showPage(p) {
       }
       loadPlanningCalendar();
     }, 100);
+  }
+
+  if (p === 'stock') {
+    initStockPage();
   }
 
   window.scrollTo(0, 0);
@@ -2172,6 +2245,8 @@ function addReceptionLine(line = {}) {
     ingredient_id: line.ingredient_id || '',
     type_produit: line.type_produit || 'Frais',
     lot: line.lot || '',
+    quantite: line.quantite || '',
+    unite: line.unite || 'kg',
     dlc_ddm_type: line.dlc_ddm_type || 'DLC',
     dlc_ddm: line.dlc_ddm || '',
     temperature: line.temperature || '',
@@ -2245,11 +2320,15 @@ function renderReceptionDraft() {
           ${['Frais','Surgele','Ambiant'].map(v => `<option value="${v}" ${line.type_produit===v?'selected':''}>${v}</option>`).join('')}
         </select><div class="text-xs text-muted mt-2">Cible: ${rule.label}</div></div>
         <div class="form-group"><label class="form-label">N° lot *</label><input class="form-input" value="${escHtml(line.lot)}" oninput="syncReceptionLine(${idx},'lot',this.value)" placeholder="Lot fournisseur"></div>
-        <div class="form-group"><label class="form-label">Temperature reception</label><input class="form-input" value="${escHtml(line.temperature)}" oninput="syncReceptionLine(${idx},'temperature',this.value)" inputmode="decimal" placeholder="Ex: 3,5"></div>
+        <div class="form-group"><label class="form-label">Quantité *</label><input class="form-input" value="${escHtml(line.quantite)}" oninput="syncReceptionLine(${idx},'quantite',this.value)" inputmode="decimal" placeholder="Ex: 5"></div>
+        <div class="form-group"><label class="form-label">Unité *</label><select class="form-select" onchange="syncReceptionLine(${idx},'unite',this.value)">
+          ${['kg','g','L','mL','pièce'].map(v => `<option value="${v}" ${line.unite===v?'selected':''}>${v}</option>`).join('')}
+        </select></div>
         <div class="form-group"><label class="form-label">DLC/DDM type</label><select class="form-select" onchange="syncReceptionLine(${idx},'dlc_ddm_type',this.value)">
           ${['DLC','DDM'].map(v => `<option value="${v}" ${line.dlc_ddm_type===v?'selected':''}>${v}</option>`).join('')}
         </select></div>
         <div class="form-group"><label class="form-label">DLC/DDM</label><input class="form-input" type="date" value="${escHtml(line.dlc_ddm)}" onchange="syncReceptionLine(${idx},'dlc_ddm',this.value)"></div>
+        <div class="form-group"><label class="form-label">Temperature reception</label><input class="form-input" value="${escHtml(line.temperature)}" oninput="syncReceptionLine(${idx},'temperature',this.value)" inputmode="decimal" placeholder="Ex: 3,5"></div>
         <div class="form-group"><label class="form-label">Conformite</label><select class="form-select" ${tempBad ? 'disabled' : ''} onchange="syncReceptionLine(${idx},'conformite',this.value)">
           ${['Conforme','Non conforme'].map(v => `<option value="${v}" ${conf===v?'selected':''}>${v}</option>`).join('')}
         </select>${tempBad ? '<div class="text-xs text-muted mt-2">Temperature hors limite</div>' : ''}</div>
@@ -2265,6 +2344,7 @@ async function saveReceptionBL() {
   if (!numero || !fournisseur) { toast('BL et fournisseur obligatoires', 'error'); return; }
   for (const line of receptionDraft) {
     if (!line.produit || !line.lot) { toast('Produit et lot obligatoires sur chaque ligne', 'error'); return; }
+    if (!line.quantite) { toast('Quantite obligatoire sur chaque ligne', 'error'); return; }
     if (line.conformite === 'Non conforme' && !String(line.action || '').trim()) {
       toast('Action corrective obligatoire si non conforme', 'error');
       return;
@@ -2276,6 +2356,7 @@ async function saveReceptionBL() {
     id_ligne: 'LOCAL-' + idx,
     date, fournisseur, numero_bl: numero,
     type_produit: line.type_produit, produit: line.produit, lot: line.lot,
+    quantite: line.quantite, unite: line.unite,
     dlc_ddm_type: line.dlc_ddm_type, dlc_ddm: line.dlc_ddm,
     temperature: line.temperature,
     temperature_cible: receptionTempLimit(line.type_produit).label,
@@ -2326,6 +2407,8 @@ function editReceptionBL(idBl) {
     ingredient_id: r.ingredient_id || '',
     type_produit: r.type_produit || 'Frais',
     lot: r.lot || '',
+    quantite: r.quantite || '',
+    unite: r.unite || 'kg',
     dlc_ddm_type: r.dlc_ddm_type || 'DLC',
     dlc_ddm: r.dlc_ddm || '',
     temperature: r.temperature || '',
@@ -2367,11 +2450,13 @@ function renderReceptionsList() {
     const idBl = r.id_bl || r.numero_bl;
     const nonConformes = rows.filter(x => x.conformite === 'Non conforme').length;
     const products = rows.map(x => escHtml(x.produit)).join(', ');
+    const qteTotal = rows.reduce((acc, x) => acc + (parseFloat(String(x.quantite || '0').replace(',', '.')) || 0), 0);
+    const uniteDisplay = rows[0]?.unite || '';
     const detail = expandedReceptionBl === idBl ? `<tr><td colspan="8" style="background:var(--surface2)">
       <div style="display:flex;flex-direction:column;gap:8px">
         ${rows.map(x => `<div class="trace-result" style="margin-bottom:0">
           <div class="trace-result-title">${escHtml(x.produit)} · lot ${escHtml(x.lot)}</div>
-          <div class="trace-result-meta">${escHtml(x.type_produit)} · ${escHtml(x.dlc_ddm_type)} ${escHtml(x.dlc_ddm)} · ${escHtml(x.temperature)} °C / ${escHtml(x.temperature_cible)} · ${escHtml(x.conformite)}</div>
+          <div class="trace-result-meta">${escHtml(x.type_produit)} · ${escHtml(x.dlc_ddm_type)} ${escHtml(x.dlc_ddm)} · Qte: ${escHtml(x.quantite || '?')} ${escHtml(x.unite || '')} · ${escHtml(x.temperature)} °C / ${escHtml(x.temperature_cible)} · ${escHtml(x.conformite)}</div>
           ${x.action ? `<div class="trace-result-meta">Action: ${escHtml(x.action)}</div>` : ''}
         </div>`).join('')}
       </div>
@@ -2382,7 +2467,7 @@ function renderReceptionsList() {
       <td>${escHtml(r.fournisseur)}</td>
       <td>${rows.length} ligne${rows.length > 1 ? 's' : ''}<div class="text-xs text-muted">${products}</div></td>
       <td>${rows.map(x => escHtml(x.lot)).join('<br>')}</td>
-      <td>${rows.map(x => `${escHtml(x.temperature)} °C`).join('<br>')}</td>
+      <td>${rows.map(x => escHtml(x.temperature) + '°C').join('<br>')}</td>
       <td><span class="badge ${nonConformes ? 'badge-danger' : 'badge-green'}">${nonConformes ? nonConformes + ' non conforme' : 'Conforme'}</span></td>
       <td style="white-space:nowrap">
         <button class="btn btn-secondary btn-sm" onclick="toggleReceptionDetails('${escHtml(idBl)}')">${expandedReceptionBl === idBl ? 'Masquer' : 'Voir'}</button>
@@ -2503,6 +2588,60 @@ function exportProductionsCsv(all) {
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+function exportStockCsv() {
+  const items = STOCK_DATA.filter(s => s.quantite > 0);
+  if (!items.length) { toast('Aucun stock a exporter', 'error'); return; }
+
+  const headers = [
+    'Produit','N° Lot','DLC/DDM','Type DLC/DDM','Quantite','Unite',
+    'Date entree','Fournisseur','N° BL source','Type produit','Observations','ID Stock'
+  ];
+
+  const values = items.map(s => [
+    s.produit, s.lot, s.dlc_ddm, s.dlc_ddm_type,
+    s.quantite, s.unite,
+    s.date_entree, s.fournisseur, s.id_bl, s.type_produit, s.observations, s.id_stock
+  ]);
+
+  const csv = [headers, ...values].map(row => row.map(csvEscape).join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.href = URL.createObjectURL(blob);
+  a.download = 'stock-' + dateStr + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Export CSV termine', 'success');
+}
+
+function exportReceptionsCsv() {
+  const rows = RECEPTIONS.filter(r => r.id_bl);
+  if (!rows.length) { toast('Aucune reception a exporter', 'error'); return; }
+
+  const headers = [
+    'BL','Date','Fournisseur','N° BL','Type produit','Produit','N° Lot',
+    'DLC/DDM_type','DLC/DDM','Quantite','Unite','Temperature °C','Temperature cible',
+    'Conformite','Action','Regle','ID Ligne'
+  ];
+
+  const values = rows.map(r => [
+    r.id_bl, r.date, r.fournisseur, r.numero_bl, r.type_produit, r.produit, r.lot,
+    r.dlc_ddm_type, r.dlc_ddm, r.quantite, r.unite, r.temperature, r.temperature_cible,
+    r.conformite, r.action, r.regle, r.id_ligne
+  ]);
+
+  const csv = [headers, ...values].map(row => row.map(csvEscape).join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.href = URL.createObjectURL(blob);
+  a.download = 'receptions-' + dateStr + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Export CSV termine', 'success');
+}
+
 async function purgeProductions(all) {
   if (!isAdmin()) { toast('Reserve aux admins', 'error'); return; }
   const recipe = document.getElementById('productionRecipeSelect')?.value || '';
@@ -2549,27 +2688,55 @@ function buildProductionPayload() {
     dlc_ddm: PROD.dateLimite,
     mentions: PROD.mentions,
     format_export: formatExport,
-    lignes: RECETTE.ingredients.map(row => {
-      const ing = ING.find(x => x.id == row.ingredient) || {};
-      const poidsIngredient = (parseFloat(row.poids) || 0) * ratio;
-      return {
-        ingredient_id: ing.id || row.ingredient,
-        ingredient: ing.nom || row.ingredient,
-        lot_ingredient: PROD.lotsIng?.[ing.id] || '',
-        dlc_ddm_ingredient: PROD.dateIng?.[ing.id] || '',
-        poids_ingredient: formatWeightG(poidsIngredient, 2),
-        energie_kj: poidsTotal > 0 ? ((parseFloat(ing.energie_kjoules) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        energie_kcal: poidsTotal > 0 ? ((parseFloat(ing.energie_kcal) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        proteines_g: poidsTotal > 0 ? ((parseFloat(ing.proteines_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        glucides_g: poidsTotal > 0 ? ((parseFloat(ing.glucides_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        sucres_g: poidsTotal > 0 ? ((parseFloat(ing.sucres_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        lipides_g: poidsTotal > 0 ? ((parseFloat(ing.lipides_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        ags_g: poidsTotal > 0 ? ((parseFloat(ing.Ags) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        sel_g: poidsTotal > 0 ? ((parseFloat(ing.sel_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        fibres_g: poidsTotal > 0 ? ((parseFloat(ing.fibres_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-        allergenes: ing.allergenes || ''
-      };
-    })
+    lignes: (function() {
+      // Si on a des allocations multi-lots, les utiliser
+      if (PROD.lotAllocations && PROD.lotAllocations.length) {
+        return PROD.lotAllocations.map(alloc => {
+          const ing = ING.find(x => x.id == alloc.ingId) || {};
+          const poidsLine = alloc.qty || 0;
+          return {
+            ingredient_id: alloc.ingId,
+            ingredient: alloc.ingNom || '',
+            lot_ingredient: alloc.lot || '',
+            dlc_ddm_ingredient: alloc.dlc || '',
+            poids_ingredient: formatWeightG(poidsLine, 2),
+            stock_id: alloc.stockId || '',
+            energie_kj: poidsTotal > 0 ? ((parseFloat(ing.energie_kjoules) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            energie_kcal: poidsTotal > 0 ? ((parseFloat(ing.energie_kcal) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            proteines_g: poidsTotal > 0 ? ((parseFloat(ing.proteines_g) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            glucides_g: poidsTotal > 0 ? ((parseFloat(ing.glucides_g) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            sucres_g: poidsTotal > 0 ? ((parseFloat(ing.sucres_g) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            lipides_g: poidsTotal > 0 ? ((parseFloat(ing.lipides_g) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            ags_g: poidsTotal > 0 ? ((parseFloat(ing.Ags) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            sel_g: poidsTotal > 0 ? ((parseFloat(ing.sel_g) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            fibres_g: poidsTotal > 0 ? ((parseFloat(ing.fibres_g) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
+            allergenes: ing.allergenes || ''
+          };
+        });
+      }
+      // Fallback : un lot par ingrédient (mode manuel sans stock)
+      return RECETTE.ingredients.map(row => {
+        const ing = ING.find(x => x.id == row.ingredient) || {};
+        const poidsIngredient = (parseFloat(row.poids) || 0) * ratio;
+        return {
+          ingredient_id: ing.id || row.ingredient,
+          ingredient: ing.nom || row.ingredient,
+          lot_ingredient: PROD.lotsIng?.[ing.id] || '',
+          dlc_ddm_ingredient: PROD.dateIng?.[ing.id] || '',
+          poids_ingredient: formatWeightG(poidsIngredient, 2),
+          energie_kj: poidsTotal > 0 ? ((parseFloat(ing.energie_kjoules) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          energie_kcal: poidsTotal > 0 ? ((parseFloat(ing.energie_kcal) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          proteines_g: poidsTotal > 0 ? ((parseFloat(ing.proteines_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          glucides_g: poidsTotal > 0 ? ((parseFloat(ing.glucides_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          sucres_g: poidsTotal > 0 ? ((parseFloat(ing.sucres_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          lipides_g: poidsTotal > 0 ? ((parseFloat(ing.lipides_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          ags_g: poidsTotal > 0 ? ((parseFloat(ing.Ags) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          sel_g: poidsTotal > 0 ? ((parseFloat(ing.sel_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          fibres_g: poidsTotal > 0 ? ((parseFloat(ing.fibres_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
+          allergenes: ing.allergenes || ''
+        };
+      });
+    })()
   };
 }
 function saveProductionTraceOptimistic() {
@@ -3192,7 +3359,8 @@ async function deleteIngredient() {
 // ════════════════════════════════════════════════════════
 let PROD = {
   lotRecette: '', poidsNet: '', poidsProduit: '', dateType: 'DLC', dateLimite: '',
-  mentions: '', lotsIng: {}, dateIng: {}, contenants: [], nbEtiquettes: '1', formats: ['pdf'], historyMode: false, format: 'pdf'
+  mentions: '', lotsIng: {}, dateIng: {}, stockLots: {}, lotAllocations: [],
+  contenants: [], nbEtiquettes: '1', formats: ['pdf'], historyMode: false, format: 'pdf'
 };
 
 function parseDecimalInput(value) {
@@ -3321,12 +3489,23 @@ async function openProductionFromHistory(productionId) {
   PROD.contenants = parseHistoricContenants(first.contenants_json);
   PROD.lotsIng = {};
   PROD.dateIng = {};
+  PROD.stockLots = {};
 
   rows.forEach(row => {
     if (row.ingredient_id) {
       PROD.lotsIng[row.ingredient_id] = row.lot_ingredient || '';
       PROD.dateIng[row.ingredient_id] = row.dlc_ddm_ingredient || '';
+      if (row.stock_id) PROD.stockLots[row.ingredient_id] = row.stock_id;
     }
+  });
+
+  // Restaurer les champs cachés stock-id (synchrone, toujours fiable)
+  document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="stock-id"]').forEach(inp => {
+    inp.value = PROD.stockLots[inp.dataset.ingId] || '';
+  });
+  // Restaurer aussi le N° de lot et la DLC depuis l'historique
+  document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="lot"]').forEach(inp => {
+    inp.value = PROD.lotsIng[inp.dataset.ingId] || '';
   });
 
   document.getElementById('prodLotRecette').value = PROD.lotRecette;
@@ -3360,7 +3539,7 @@ function openModalProduction() {
   if (!hasModuleAccess('production')) { toast('Module Production non disponible avec votre abonnement', 'error'); return; }
   if (!RECETTE.id) return;
   const baseWeight = getRecetteBaseWeight();
-  PROD = { lotRecette:'', poidsNet:'', poidsProduit:String(formatWeightG(baseWeight)), dateType:'DLC', dateLimite:'', mentions:'', lotsIng:{}, dateIng:{}, contenants:[], nbEtiquettes:'1', formats:['pdf'], historyMode:false, format:'pdf' };
+  PROD = { lotRecette:'', poidsNet:'', poidsProduit:String(formatWeightG(baseWeight)), dateType:'DLC', dateLimite:'', mentions:'', lotsIng:{}, dateIng:{}, stockLots:{}, lotAllocations:[], contenants:[], nbEtiquettes:'1', formats:['pdf'], historyMode:false, format:'pdf' };
   document.getElementById('prodNbEtiquettes').value = '1';
   document.getElementById('btnProdExport').innerHTML = 'Enregistrer';
 
@@ -3379,6 +3558,31 @@ function openModalProduction() {
 
   // Calcul poids total pour QUID
   const poidsTotal = getRecetteBaseWeight();
+
+  // Charger les lots disponibles depuis le stock (pour abonnement >= 3)
+  const hasStock = getAbonnement() >= 3;
+  let stockLotsMap = {};
+  if (hasStock) {
+    (async () => {
+      try {
+        const lots = await apiGet('lotsDisponibles');
+        if (Array.isArray(lots)) {
+          stockLotsMap = lots.reduce((acc, s) => {
+            const key = String(s.produit || '').trim().toLowerCase();
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(s);
+            return acc;
+          }, {});
+          // Mettre à jour les sélecteurs déjà créés
+          document.querySelectorAll('[data-field="lot-select"]').forEach(sel => {
+            const ingId = sel.dataset.ingId;
+            const ing = ING.find(x => x.id == ingId);
+            if (ing) refreshLotSelect(sel, ing, stockLotsMap);
+          });
+        }
+      } catch(e) { /* stock non disponible */ }
+    })();
+  }
 
   RECETTE.ingredients.forEach(row => {
     const ing = ING.find(x => x.id == row.ingredient);
@@ -3409,7 +3613,57 @@ function openModalProduction() {
 
     const div = document.createElement('div');
     div.className = 'prod-lot-row';
-div.innerHTML = `
+    
+    if (hasStock) {
+      // Allocation FIFO automatique : on alloue les lots par DLC croissante
+      const ratio = getProductionScaleRatio();
+      const neededQty = (parseFloat(row.poids) || 0) * ratio;
+      const fqty = formatWeightG(neededQty, 1);
+      const { allocations, manque } = autoAllocateLotsFIFO(ing, neededQty, stockLotsMap);
+      
+      let lotsLines = '';
+      if (allocations.length) {
+        lotsLines = allocations.map((a, idx) => `
+          <div style="display:flex;align-items:center;gap:6px;margin-top:${idx>0?'4px':'0'}">
+            <span style="font-size:11px;white-space:nowrap">${escHtml(a.lot)}</span>
+            <span style="font-size:10px;color:var(--text3)">DLC: ${a.dlc || '—'}</span>
+            <input class="form-input stock-lot-qty" type="number" step="any"
+              data-ing-id="${ing.id}" data-stock-id="${escHtml(a.stockId)}"
+              data-lot="${escHtml(a.lot)}" data-dlc="${escHtml(a.dlc || '')}"
+              value="${a.qty}" max="${a.maxQty}"
+              style="width:90px;font-size:12px;padding:4px 6px;text-align:right"
+              onchange="onLotQtyChange(this, '${ing.id}', ${fqty})">
+            <span style="font-size:10px;color:var(--text3);white-space:nowrap">/ ${a.maxQty} ${a.unite}</span>
+          </div>
+        `).join('');
+        const totalAlloue = allocations.reduce((s, a) => s + a.qty, 0);
+        const pct = neededQty > 0 ? (totalAlloue / neededQty * 100) : 0;
+        const statut = totalAlloue >= neededQty
+          ? `<span style="color:var(--g2);font-weight:700">✅ ${formatWeightG(totalAlloue,1)} / ${fqty} g</span>`
+          : `<span style="color:var(--danger);font-weight:700">⚠️ ${formatWeightG(totalAlloue,1)} / ${fqty} g (manque ${formatWeightG(manque,1)} g)</span>`;
+        lotsLines += `<div style="font-size:11px;margin-top:6px;padding-top:4px;border-top:1px solid var(--border)">
+          Total alloué : <span data-statut>${statut}</span>
+        </div>`;
+      } else {
+        lotsLines = `<div style="font-size:11px;color:var(--text3);padding:4px 0">Aucun lot disponible en stock pour ${escHtml(ing.nom)}</div>`;
+      }
+      
+      div.innerHTML = `
+      <span class="prod-lot-icon">${ing.type === 'compose' ? '🍲' : '🥬'}</span>
+      <div style="flex:1;min-width:0;overflow:hidden">
+        <div style="display:flex;align-items:center;flex-wrap:wrap">
+          <div class="prod-lot-name" title="${escHtml(ing.nom)}">${escHtml(ing.nom)}</div>
+          ${quidHtml}
+          <span style="font-size:10px;color:var(--text3);margin-left:6px">(${fqty} g)</span>
+        </div>
+        ${subsHtml}
+        <div class="stock-lot-allocations" data-ing-id="${ing.id}">
+          ${lotsLines}
+        </div>
+      </div>
+    `;
+    } else {
+      div.innerHTML = `
       <span class="prod-lot-icon">${ing.type === 'compose' ? '🍲' : '🥬'}</span>
       <div style="flex:1;min-width:0;overflow:hidden">
         <div style="display:flex;align-items:center;flex-wrap:wrap">
@@ -3426,6 +3680,7 @@ div.innerHTML = `
         </div>
       </div>
     `;
+    }
     cont.appendChild(div);
   });
 
@@ -3460,6 +3715,82 @@ function selectLabelFormat(el, format) {
   renderLabelPreview();
 }
 
+function onSelectStockLot(selectEl, ingId, ingName) {
+  const stockId = selectEl.value;
+  const hiddenLot = document.querySelector(`[data-ing-id="${ingId}"][data-field="lot"]`);
+  const hiddenStockId = document.querySelector(`[data-ing-id="${ingId}"][data-field="stock-id"]`);
+  const hiddenDate = document.querySelector(`[data-ing-id="${ingId}"][data-field="date"]`);
+  if (stockId && hiddenLot && hiddenStockId) {
+    // Trouver les infos du lot sélectionné dans l'option
+    const opt = selectEl.options[selectEl.selectedIndex];
+    hiddenLot.value = opt.dataset.lot || '';
+    hiddenStockId.value = stockId;
+    if (hiddenDate) hiddenDate.value = opt.dataset.dlc || '';
+  } else {
+    if (hiddenLot) hiddenLot.value = '';
+    if (hiddenStockId) hiddenStockId.value = '';
+    if (hiddenDate) hiddenDate.value = '';
+  }
+}
+
+function refreshLotSelect(selectEl, ing, stockLotsMap) {
+  const key = String(ing.nom || '').trim().toLowerCase();
+  const lots = stockLotsMap[key] || [];
+  if (lots.length) {
+    selectEl.innerHTML = '<option value="">-- Choisir un lot --</option>' +
+      lots.map(s => {
+        const dlcDisplay = s.dlc_ddm ? ` [${s.dlc_ddm}]` : '';
+        const qteDisplay = ` (${s.quantite} ${s.unite})`;
+        return `<option value="${escHtml(s.id_stock)}" data-lot="${escHtml(s.lot)}" data-dlc="${escHtml(s.dlc_ddm)}" data-qte="${s.quantite}">
+          ${escHtml(s.lot)}${dlcDisplay} — Stock: ${s.quantite} ${s.unite}
+        </option>`;
+      }).join('');
+  } else {
+    selectEl.innerHTML = '<option value="">Aucun lot en stock</option>';
+  }
+}
+
+function onLotQtyChange(inputEl, ingId, neededQty) {
+  // Collecte les quantités de tous les lots alloués pour cet ingrédient
+  const qties = document.querySelectorAll(`.stock-lot-qty[data-ing-id="${ingId}"]`);
+  let totalAlloue = 0;
+  
+  // Mettre à jour PROD.lotAllocations
+  const newAllocations = [];
+  qties.forEach(inp => {
+    const qty = parseFloat(inp.value) || 0;
+    if (qty <= 0) return;
+    const stockId = inp.dataset.stockId;
+    const lot = inp.dataset.lot;
+    const dlc = inp.dataset.dlc;
+    const ing = ING.find(x => x.id == ingId);
+    newAllocations.push({
+      ingId: ingId,
+      ingNom: ing ? ing.nom : '',
+      stockId: stockId,
+      lot: lot,
+      dlc: dlc,
+      qty: qty
+    });
+    totalAlloue += qty;
+  });
+  
+  // Enlever les anciennes allocs pour cet ingrédient et ajouter les nouvelles
+  PROD.lotAllocations = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId).concat(newAllocations);
+  
+  // Mettre à jour le statut dans l'UI
+  const allocDiv = inputEl.closest('.stock-lot-allocations');
+  if (allocDiv) {
+    const statutEl = allocDiv.querySelector('[data-statut]');
+    const pct = neededQty > 0 ? (totalAlloue / neededQty * 100) : 0;
+    if (statutEl) {
+      statutEl.innerHTML = totalAlloue >= neededQty
+        ? `<span style="color:var(--g2);font-weight:700">✅ ${formatWeightG(totalAlloue,1)} / ${formatWeightG(neededQty,1)} g</span>`
+        : `<span style="color:var(--danger);font-weight:700">⚠️ ${formatWeightG(totalAlloue,1)} / ${formatWeightG(neededQty,1)} g (manque ${formatWeightG(neededQty - totalAlloue,1)} g)</span>`;
+    }
+  }
+}
+
 function prodGoStep(n) {
   if (n === 2) {
     const lot = document.getElementById('prodLotRecette').value.trim();
@@ -3475,12 +3806,20 @@ function prodGoStep(n) {
     PROD.mentions   = document.getElementById('prodMentions').value.trim();
     PROD.contenants = getSelectedProdContenants();
     PROD.nbEtiquettes = document.getElementById('prodNbEtiquettes').value.trim() || '1';
+    
+    // Collecter les lots (manuel ou stock)
+    PROD.lotsIng = {};
+    PROD.dateIng = {};
+    PROD.stockLots = {};
+    
     document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="lot"]').forEach(inp => {
       PROD.lotsIng[inp.dataset.ingId] = inp.value.trim();
     });
-    PROD.dateIng = {};
     document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="date"]').forEach(inp => {
       PROD.dateIng[inp.dataset.ingId] = inp.value.trim();
+    });
+    document.querySelectorAll('#prodLotsIngredients [data-ing-id][data-field="stock-id"]').forEach(inp => {
+      PROD.stockLots[inp.dataset.ingId] = inp.value.trim();
     });
   }
   if (n === 3) {
@@ -4068,10 +4407,32 @@ function buildRecap() {
       }
     }
 
-    const lot = PROD.lotsIng[ing.id] || '—';
-    const dateIng = (PROD.dateIng || {})[ing.id] || '';
-    const dlcLabel = ing.dlc_type || 'DDM';
-    lotsHtml += `
+    // Vérifier si on a des allocations multi-lots pour cet ingrédient
+    const allocs = (PROD.lotAllocations || []).filter(a => a.ingId === ing.id);
+    if (allocs.length) {
+      const totalQte = allocs.reduce((s, a) => s + (a.qty || 0), 0);
+      lotsHtml += `
+      <div style="padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <div style="flex:1">
+            <span style="font-weight:600">${escHtml(ing.nom)}</span>${quidHtml}
+            ${subsHtml}
+          </div>
+          <span style="color:var(--g3);font-weight:600;white-space:nowrap">${formatWeightG(totalQte,1)} g</span>
+        </div>
+        <div style="margin-top:4px;display:flex;flex-direction:column;gap:2px">
+          ${allocs.map(a => `<div style="font-size:11px;color:var(--text2);display:flex;gap:8px">
+            <span style="font-weight:600">Lot ${escHtml(a.lot)}</span>
+            <span>${formatWeightG(a.qty,1)} g</span>
+            ${a.dlc ? `<span style="color:var(--text3)">DLC: ${escHtml(a.dlc)}</span>` : ''}
+          </div>`).join('')}
+        </div>
+      </div>`;
+    } else {
+      const lot = PROD.lotsIng[ing.id] || '—';
+      const dateIng = (PROD.dateIng || {})[ing.id] || '';
+      const dlcLabel = ing.dlc_type || 'DDM';
+      lotsHtml += `
       <div style="padding:6px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;gap:8px;align-items:flex-start">
           <div style="flex:1">
@@ -4082,6 +4443,7 @@ function buildRecap() {
         </div>
         ${dateIng ? `<div style="font-size:11px;color:var(--text3);margin-top:2px">${dlcLabel} : <strong style="color:${dlcLabel==='DLC'?'#e05c5c':'#f0a500'}">${escHtml(dateIng)}</strong></div>` : ''}
       </div>`;
+    }
   });
 
   document.getElementById('prodRecap').innerHTML = `
@@ -6421,6 +6783,441 @@ function savePlanningTaskOld() {
   renderPlanning();
   toast('Tâche ajoutée ✓', 'success');
 }
+
+// ═══════════════════════════════════════════════════════════
+//  MODULE STOCK (Abonnement 3)
+// ═══════════════════════════════════════════════════════════
+let STOCK_DATA = []
+
+// ── Allocation FIFO automatique des lots ──
+function autoAllocateLotsFIFO(ing, neededQty, stockLotsMap) {
+  const key = String(ing.nom || '').trim().toLowerCase();
+  const lots = (stockLotsMap[key] || [])
+    .filter(s => s.quantite > 0)
+    .sort((a, b) => {
+      // FIFO : tri par DLC croissante (plus vieux d'abord)
+      const da = parseDateStock(a.dlc_ddm);
+      const db = parseDateStock(b.dlc_ddm);
+      if (!da && !db) return 0;
+      if (!da) return 1;
+      if (!db) return -1;
+      return da - db;
+    });
+
+  let reste = neededQty;
+  const allocations = [];
+
+  for (const s of lots) {
+    if (reste <= 0) break;
+    const dispo = s.quantite;
+    const pris = Math.min(dispo, reste);
+    allocations.push({
+      ingId: ing.id,
+      ingNom: ing.nom,
+      stockId: s.id_stock,
+      lot: s.lot,
+      dlc: s.dlc_ddm,
+      qty: pris,
+      unite: s.unite,
+      maxQty: dispo
+    });
+    reste -= pris;
+  }
+
+  return { allocations, manque: reste > 0 ? reste : 0 };
+}
+
+function parseDateStock(str) {
+  if (!str) return null;
+  const s = String(str).trim();
+  const m1 = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+  if (m1) return new Date(parseInt(m1[1]), parseInt(m1[2])-1, parseInt(m1[3])).getTime();
+  const m2 = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (m2) return new Date(parseInt(m2[3]), parseInt(m2[2])-1, parseInt(m2[1])).getTime();
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function initStockPage() {
+  // Créer le conteneur pageStock s'il n'existe pas
+  if (!document.getElementById('pageStock')) {
+    const main = document.querySelector('.main');
+    if (!main) return;
+    const div = document.createElement('div');
+    div.id = 'pageStock';
+    // La visibilité est gérée par showPage() — on laisse le style par défaut (visible)
+    div.innerHTML = `
+      <div class="page-header">
+        <div class="page-title"><span>📦</span> Gestion des Stocks</div>
+      </div>
+      <div class="stock-alert-bar" id="stockStatCards">
+        <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Produits</div></div>
+        <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Lots en stock</div></div>
+        <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Unités totales</div></div>
+        <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">DLC < 14 jours</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Inventaire</div>
+          <div class="flex gap-2">
+            <div class="search-wrap"><input class="form-input" id="searchStock" placeholder="Rechercher..." oninput="renderStock()"></div>
+            <select class="form-select" id="filterStockProduit" onchange="renderStock()" style="width:auto">
+              <option value="">Tous les produits</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="exportStockCsv()" title="Exporter en CSV">⬇️ CSV</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Produit</th>
+                  <th>N° Lot</th>
+                  <th>DLC/DDM</th>
+                  <th>Quantité</th>
+                  <th>Fournisseur</th>
+                  <th>Date entrée</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="stockBody"></tbody>
+            </table>
+          </div>
+          <div id="stockLoading" class="skel-spinner-wrap" style="display:flex">
+            <div class="skel-spinner"></div>
+            <div class="skel-spinner-label">Chargement des stocks...</div>
+          </div>
+        </div>
+      </div>
+      <div class="card mt-3">
+        <div class="card-header">
+          <div class="card-title">📦 Produits en stock</div>
+        </div>
+        <div class="card-body" id="stockProduitsBody"></div>
+      </div>
+    `;
+    main.appendChild(div);
+  }
+
+  // Ajouter nav-item stock s'il n'existe pas dans le sidebar
+  if (!document.getElementById('nav-stock')) {
+    const navReception = document.getElementById('nav-reception');
+    if (navReception) {
+      const nav = document.createElement('div');
+      nav.className = 'nav-item';
+      nav.id = 'nav-stock';
+      nav.onclick = function() { showPage('stock'); };
+      nav.innerHTML = '<span class="icon">📦</span> Stock';
+      navReception.parentNode.insertBefore(nav, navReception.nextSibling);
+    }
+  }
+
+  loadStock();
+}
+
+async function loadStock() {
+  // Afficher le chargement
+  const loading = document.getElementById('stockLoading');
+  if (loading) loading.style.display = 'flex';
+  try {
+    const data = await apiGet('stock');
+    STOCK_DATA = Array.isArray(data) ? data : [];
+    renderStock();
+  } catch(e) {
+    STOCK_DATA = [];
+    renderStock();
+  }
+}
+
+function renderStock() {
+  const tbody = document.getElementById('stockBody');
+  if (!tbody) return;
+  
+  // Cacher le chargement
+  const loading = document.getElementById('stockLoading');
+  if (loading) loading.style.display = 'none';
+
+  const q = (document.getElementById('searchStock')?.value || '').toLowerCase();
+  const filterProduit = document.getElementById('filterStockProduit')?.value || '';
+
+  let items = STOCK_DATA.filter(s => s.quantite > 0);
+  if (q) items = items.filter(s => (s.produit + ' ' + s.lot + ' ' + s.fournisseur).toLowerCase().includes(q));
+  if (filterProduit) items = items.filter(s => s.produit === filterProduit);
+
+  // Stats
+  const totalProduits = [...new Set(items.map(s => s.produit))].length;
+  const totalLots = items.length;
+  const totalQte = items.reduce((acc, s) => acc + (s.quantite || 0), 0);
+  const alerteDLC = items.filter(s => {
+    if (!s.dlc_ddm) return false;
+    const d = parseDateStock(s.dlc_ddm);
+    return d && (d - Date.now()) < 14 * 24 * 60 * 60 * 1000 && (d - Date.now()) > 0;
+  }).length;
+  const epuises = STOCK_DATA.filter(s => s.quantite <= 0).length;
+
+  document.getElementById('stockStatCards').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${totalProduits}</div><div class="stat-label">Produits</div></div>
+    <div class="stat-card"><div class="stat-num">${totalLots}</div><div class="stat-label">Lots en stock</div></div>
+    <div class="stat-card"><div class="stat-num">${totalQte.toFixed(1)}</div><div class="stat-label">Unités totales</div></div>
+    <div class="stat-card ${alerteDLC ? 'stock-alert-dlc' : ''}"><div class="stat-num">${alerteDLC}</div><div class="stat-label">DLC < 14 jours</div></div>
+  `;
+
+  // Remplir le filtre produit
+  const filterSel = document.getElementById('filterStockProduit');
+  if (filterSel) {
+    const produits = [...new Set(STOCK_DATA.filter(s => s.quantite > 0).map(s => s.produit))].sort();
+    const currentVal = filterSel.value;
+    filterSel.innerHTML = '<option value="">Tous les produits</option>' +
+      produits.map(p => `<option value="${escHtml(p)}">${escHtml(p)}</option>`).join('');
+    filterSel.value = currentVal;
+  }
+
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><p>Aucun stock</p></div></td></tr>';
+    document.getElementById('stockProduitsBody').innerHTML = '<div class="empty"><p>Aucun produit</p></div>';
+    return;
+  }
+
+  // Trier par produit puis par DLC (FIFO)
+  items.sort((a, b) => {
+    if (a.produit !== b.produit) return a.produit.localeCompare(b.produit);
+    const da = parseDateStock(a.dlc_ddm);
+    const db = parseDateStock(b.dlc_ddm);
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return da - db;
+  });
+
+  tbody.innerHTML = items.map(s => {
+    const dlcAlerte = isDlcAlert(s.dlc_ddm);
+    const dlcDepassee = isDlcDepassee(s.dlc_ddm);
+    return `<tr>
+      <td class="td-name">${escHtml(s.produit)}</td>
+      <td>${escHtml(s.lot)}</td>
+      <td>
+        <span class="badge ${dlcDepassee ? 'badge-danger' : dlcAlerte ? 'badge-orange' : 'badge-blue'}">
+          ${s.dlc_ddm || '—'}
+        </span>
+        ${dlcDepassee ? '<span style="color:var(--danger);font-size:10px;display:block">⚠️ DLC dépassée</span>' : ''}
+      </td>
+      <td><strong>${s.quantite} ${s.unite}</strong></td>
+      <td>${escHtml(s.fournisseur || '—')}</td>
+      <td>${s.date_entree || '—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="openModalAdjustStock('${escHtml(s.id_stock)}')">✏️ Ajuster</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Produits summary
+  const produitsMap = {};
+  items.forEach(s => {
+    if (!produitsMap[s.produit]) produitsMap[s.produit] = { produit: s.produit, lots: 0, qte: 0, unite: s.unite };
+    produitsMap[s.produit].lots++;
+    produitsMap[s.produit].qte += s.quantite;
+  });
+  const produits = Object.values(produitsMap);
+  document.getElementById('stockProduitsBody').innerHTML = produits.map(p => `
+    <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="flex:1"><strong>${escHtml(p.produit)}</strong></div>
+      <div style="flex:0 0 100px;text-align:right">${p.lots} lot${p.lots > 1 ? 's' : ''}</div>
+      <div style="flex:0 0 120px;text-align:right;font-weight:700;color:var(--g3)">${p.qte.toFixed(1)} ${p.unite}</div>
+    </div>
+  `).join('') || '<div class="empty"><p>Aucun produit</p></div>';
+}
+
+function isDlcAlert(str) {
+  const t = parseDateStock(str);
+  if (!t) return false;
+  const now = Date.now();
+  return t > now && (t - now) < 14 * 24 * 60 * 60 * 1000;
+}
+
+function isDlcDepassee(str) {
+  const t = parseDateStock(str);
+  if (!t) return false;
+  return t < Date.now();
+}
+
+let editingStockId = '';
+
+function openModalAdjustStock(stockId) {
+  const item = STOCK_DATA.find(s => s.id_stock === stockId);
+  if (!item) return;
+  editingStockId = stockId;
+  const modal = document.getElementById('modalStock');
+  if (!modal) createStockModal();
+  document.getElementById('modalStock').classList.add('open');
+  document.getElementById('stkProduit').textContent = item.produit + ' - Lot ' + item.lot;
+  document.getElementById('stkQteActuelle').textContent = item.quantite + ' ' + item.unite;
+  document.getElementById('stkNewQte').value = item.quantite;
+  document.getElementById('stkObservations').value = '';
+}
+
+function openModalAddStockEntry() {
+  editingStockId = '';
+  const modal = document.getElementById('modalStock');
+  if (!modal) createStockModal();
+  document.getElementById('modalStock').classList.add('open');
+  document.getElementById('stkProduit').textContent = 'Nouvelle entrée';
+  document.getElementById('stkQteActuelle').textContent = '—';
+  document.getElementById('stkNewQte').value = '';
+  document.getElementById('stkObservations').value = '';
+  document.querySelectorAll('#stkNewFields input, #stkNewFields select').forEach(el => el.value = '');
+  document.getElementById('stkNewFields').style.display = 'block';
+}
+
+function createStockModal() {
+  const div = document.createElement('div');
+  div.id = 'modalStock';
+  div.className = 'modal-overlay';
+  div.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">📦 Ajustement stock</div>
+      <div class="form-group">
+        <label class="form-label">Produit / Lot</label>
+        <div id="stkProduit" style="font-weight:700;font-size:15px"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quantité actuelle</label>
+        <div id="stkQteActuelle" style="font-weight:700;font-size:18px;color:var(--g3)"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nouvelle quantité *</label>
+        <input class="form-input" id="stkNewQte" type="number" step="any" placeholder="0">
+      </div>
+      <div class="form-group" id="stkNewFields" style="display:none">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Produit *</label><input class="form-input" id="stkNewProduit" placeholder="Nom du produit"></div>
+          <div class="form-group"><label class="form-label">N° Lot *</label><input class="form-input" id="stkNewLot" placeholder="N° de lot"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Unité</label><select class="form-select" id="stkNewUnite">
+            ${['kg','g','L','mL','pièce'].map(v => `<option value="${v}">${v}</option>`).join('')}
+          </select></div>
+          <div class="form-group"><label class="form-label">DLC/DDM</label><input class="form-input" id="stkNewDlc" type="date"></div>
+        </div>
+        <div class="form-group"><label class="form-label">DLC/DDM type</label><select class="form-select" id="stkNewDlcType">
+          <option value="DLC">DLC</option><option value="DDM">DDM</option>
+        </select></div>
+        <div class="form-group"><label class="form-label">Fournisseur</label><input class="form-input" id="stkNewFournisseur" placeholder="Nom du fournisseur"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observations</label>
+        <input class="form-input" id="stkObservations" placeholder="Motif de l'ajustement...">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModalAdjustStock()">Annuler</button>
+        <button class="btn btn-primary" onclick="saveStockAdjustment()">💾 Enregistrer</button>
+      </div>
+    </div>
+  `;
+  div.addEventListener('click', function(e) { if (e.target === this) closeModalAdjustStock(); });
+  document.body.appendChild(div);
+}
+
+function closeModalAdjustStock() {
+  document.getElementById('modalStock')?.classList.remove('open');
+  document.getElementById('stkNewFields').style.display = 'none';
+}
+
+async function saveStockAdjustment() {
+  const newQte = parseFloat(document.getElementById('stkNewQte').value) || 0;
+  const obs = document.getElementById('stkObservations').value.trim();
+  
+  if (editingStockId) {
+    // Ajustement d'une ligne existante
+    if (newQte < 0) { toast('La quantité ne peut pas être négative', 'error'); return; }
+    
+    // Mise à jour optimiste locale
+    const idx = STOCK_DATA.findIndex(s => s.id_stock === editingStockId);
+    let oldQte = 0, oldObs = '';
+    if (idx >= 0) {
+      oldQte = STOCK_DATA[idx].quantite;
+      oldObs = STOCK_DATA[idx].observations || '';
+      STOCK_DATA[idx].quantite = newQte;
+      if (obs) STOCK_DATA[idx].observations = oldObs ? oldObs + '; ' + obs : obs;
+    }
+    closeModalAdjustStock();
+    renderStock();
+    
+    // Appel API en arrière-plan (pas de toast succès avant confirmation)
+    try {
+      const data = await fetch(API, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'adjustStock', id_stock: editingStockId, quantite: newQte, observations: obs })
+      }).then(r => r.json());
+      if (!data.ok) throw new Error(data.message || 'Erreur');
+      toast('Stock ajusté', 'success');
+    } catch(e) {
+      // Revert complet en cas d'erreur (quantité + observations)
+      if (idx >= 0) {
+        STOCK_DATA[idx].quantite = oldQte;
+        STOCK_DATA[idx].observations = oldObs;
+      }
+      renderStock();
+      toast('Erreur : ' + (e.message || 'Erreur'), 'error');
+    }
+  } else {
+    // Nouvelle entrée manuelle
+    const produit = document.getElementById('stkNewProduit').value.trim();
+    const lot = document.getElementById('stkNewLot').value.trim();
+    if (!produit || !lot) { toast('Produit et lot requis', 'error'); return; }
+    
+    // Création optimiste locale avec un ID temporaire
+    const tempId = 'TEMP-' + Date.now();
+    const tempEntry = {
+      id_stock: tempId,
+      produit: produit,
+      lot: lot,
+      dlc_ddm: document.getElementById('stkNewDlc').value,
+      dlc_ddm_type: document.getElementById('stkNewDlcType').value,
+      quantite: newQte,
+      unite: document.getElementById('stkNewUnite').value,
+      date_entree: todayISO(),
+      fournisseur: document.getElementById('stkNewFournisseur').value.trim(),
+      id_bl: '',
+      type_produit: '',
+      observations: obs || 'Ajustement manuel'
+    };
+    STOCK_DATA.push(tempEntry);
+    closeModalAdjustStock();
+    renderStock();
+    
+    // Appel API en arrière-plan
+    try {
+      const data = await fetch(API, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'saveStockMouvement',
+          produit, lot,
+          quantite: newQte,
+          unite: document.getElementById('stkNewUnite').value,
+          dlc_ddm: document.getElementById('stkNewDlc').value,
+          dlc_ddm_type: document.getElementById('stkNewDlcType').value,
+          fournisseur: document.getElementById('stkNewFournisseur').value.trim(),
+          observations: obs
+        })
+      }).then(r => r.json());
+      if (!data.ok) throw new Error(data.message || 'Erreur');
+      // Remplacer l'ID temporaire par l'ID réel du serveur
+      if (data.id_stock) {
+        const tempIdx = STOCK_DATA.findIndex(s => s.id_stock === tempId);
+        if (tempIdx >= 0) STOCK_DATA[tempIdx].id_stock = data.id_stock;
+      }
+      toast('Entrée stock ajoutée', 'success');
+    } catch(e) {
+      // Revert en cas d'erreur
+      STOCK_DATA = STOCK_DATA.filter(s => s.id_stock !== tempId);
+      renderStock();
+      toast('Erreur : ' + (e.message || 'Erreur'), 'error');
+    }
+  }
+}
+
+
 </script>
 <!-- MODAL RESSOURCE -->
 <div class="modal-overlay" id="modalRessource">
