@@ -3474,7 +3474,7 @@ async function openProductionFromHistory(productionId) {
 
   showPage('recettes');
   await openRecette(recette.id, recette.nom);
-  openModalProduction();
+  await openModalProduction();
 
   PROD.lotRecette = first.lot_recette || '';
   PROD.poidsNet = first.poids_net || '';
@@ -3535,7 +3535,12 @@ async function openProductionFromHistory(productionId) {
   prodGoStep(2);
 }
 
-function openModalProduction() {
+let _prodModalOpening = false;
+
+async function openModalProduction() {
+  if (_prodModalOpening) return;
+  _prodModalOpening = true;
+  try {
   if (!hasModuleAccess('production')) { toast('Module Production non disponible avec votre abonnement', 'error'); return; }
   if (!RECETTE.id) return;
   const baseWeight = getRecetteBaseWeight();
@@ -3563,25 +3568,17 @@ function openModalProduction() {
   const hasStock = getAbonnement() >= 3;
   let stockLotsMap = {};
   if (hasStock) {
-    (async () => {
-      try {
-        const lots = await apiGet('lotsDisponibles');
-        if (Array.isArray(lots)) {
-          stockLotsMap = lots.reduce((acc, s) => {
-            const key = String(s.produit || '').trim().toLowerCase();
-            if (!acc[key]) acc[key] = [];
-            acc[key].push(s);
-            return acc;
-          }, {});
-          // Mettre à jour les sélecteurs déjà créés
-          document.querySelectorAll('[data-field="lot-select"]').forEach(sel => {
-            const ingId = sel.dataset.ingId;
-            const ing = ING.find(x => x.id == ingId);
-            if (ing) refreshLotSelect(sel, ing, stockLotsMap);
-          });
-        }
-      } catch(e) { /* stock non disponible */ }
-    })();
+    try {
+      const lots = await apiGet('lotsDisponibles');
+      if (Array.isArray(lots)) {
+        stockLotsMap = lots.reduce((acc, s) => {
+          const key = String(s.produit || '').trim().toLowerCase();
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(s);
+          return acc;
+        }, {});
+      }
+    } catch(e) { /* stock non disponible */ }
   }
 
   RECETTE.ingredients.forEach(row => {
@@ -3696,6 +3693,9 @@ function openModalProduction() {
 
   prodGoStep(1);
   openModal('modalProduction');
+  } finally {
+    _prodModalOpening = false;
+  }
 }
 function setProdDateType(type) {
   PROD.dateType = type;
@@ -6790,6 +6790,14 @@ function savePlanningTaskOld() {
 let STOCK_DATA = []
 
 // ── Allocation FIFO automatique des lots ──
+function stockQtyToGrams(qty, unite) {
+  const u = (unite || '').trim().toLowerCase();
+  if (u === 'kg' || u === 'kilo' || u === 'kilos' || u === 'kilogramme' || u === 'kilogrammes') return qty * 1000;
+  if (u === 'l' || u === 'litre' || u === 'litres' || u === 'ltre' || u === 'ltres') return qty * 1000;
+  // g, ml, pièce, unité → pas de conversion
+  return qty;
+}
+
 function autoAllocateLotsFIFO(ing, neededQty, stockLotsMap) {
   const key = String(ing.nom || '').trim().toLowerCase();
   const lots = (stockLotsMap[key] || [])
@@ -6809,8 +6817,11 @@ function autoAllocateLotsFIFO(ing, neededQty, stockLotsMap) {
 
   for (const s of lots) {
     if (reste <= 0) break;
-    const dispo = s.quantite;
+    // Convertir la quantité du stock en grammes pour comparer avec le besoin (en g)
+    const dispo = stockQtyToGrams(s.quantite, s.unite);
     const pris = Math.min(dispo, reste);
+    // L'unité affichée devient 'g' si on a converti depuis kg/L
+    const displayUnite = dispo !== s.quantite ? 'g' : s.unite;
     allocations.push({
       ingId: ing.id,
       ingNom: ing.nom,
@@ -6818,7 +6829,7 @@ function autoAllocateLotsFIFO(ing, neededQty, stockLotsMap) {
       lot: s.lot,
       dlc: s.dlc_ddm,
       qty: pris,
-      unite: s.unite,
+      unite: displayUnite,
       maxQty: dispo
     });
     reste -= pris;
