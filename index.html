@@ -1104,6 +1104,7 @@
     <div class="nav-item" onclick="showPage('fournisseurs')" id="nav-fournisseurs"><span class="icon">🏭</span> Fournisseurs</div>
     <div class="nav-item" onclick="showPage('reception')" id="nav-reception"><span class="icon">🚚</span> Reception</div>
     <div class="nav-item" onclick="showPage('stock')" id="nav-stock"><span class="icon">📦</span> Stock</div>
+    <div class="nav-item" onclick="showPage('tableaudebord')" id="nav-tableaudebord"><span class="icon">📈</span> Tableau de Bord</div>
     <div class="nav-item" onclick="showPage('production')" id="nav-production"><span class="icon">🔍</span> Traçabilité</div>
 <div class="nav-item" onclick="showPage('decision')" id="nav-decision">
   <span class="icon">📊</span> Décision
@@ -1850,6 +1851,7 @@ function hasModuleAccess(moduleName) {
     case 'decision':
     case 'planning':
     case 'stock':
+    case 'tableaudebord':
       return abo >= 3;
     default:
       return false;
@@ -1975,6 +1977,7 @@ function applyAbonnementRestrictions() {
   const navEquipe = document.getElementById('nav-equipe');
   const navReception = document.getElementById('nav-reception');
   const navProduction = document.getElementById('nav-production');
+  const navDashboard = document.getElementById('nav-tableaudebord');
 
   const homeDecision = document.getElementById('home-card-decision');
   const homePlanning = document.getElementById('home-card-planning');
@@ -1991,6 +1994,7 @@ function applyAbonnementRestrictions() {
   if (navDecision) navDecision.style.display = hasModuleAccess('decision') ? '' : 'none';
   if (navPlanning) navPlanning.style.display = hasModuleAccess('planning') ? '' : 'none';
   if (navEquipe) navEquipe.style.display = hasModuleAccess('equipe') ? '' : 'none';
+  if (navDashboard) navDashboard.style.display = hasModuleAccess('tableaudebord') ? '' : 'none';
 
   if (homeReception) homeReception.style.display = hasModuleAccess('reception') ? '' : 'none';
   if (homeStock) homeStock.style.display = hasModuleAccess('stock') ? '' : 'none';
@@ -2184,7 +2188,7 @@ function showPage(p) {
     p = 'accueil';
   }
 
-  ['accueil','recettes','ingredients','fournisseurs','reception','production','decision','planning','stock'].forEach(name => {
+  ['accueil','recettes','ingredients','fournisseurs','reception','production','decision','planning','stock','tableaudebord'].forEach(name => {
     const el = document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1));
     if (el) el.style.display = p === name ? 'block' : 'none';
 
@@ -2217,6 +2221,10 @@ function showPage(p) {
 
   if (p === 'stock') {
     initStockPage();
+  }
+
+  if (p === 'tableaudebord') {
+    initDashboardPage();
   }
 
   window.scrollTo(0, 0);
@@ -7431,6 +7439,494 @@ async function saveStockAdjustment() {
   }
 }
 
+// ── DASHBOARD : Tableau de Bord (abonnement 3) ──
+let DASHBOARD_INITIALIZED = false;
+
+function initDashboardPage() {
+  if (DASHBOARD_INITIALIZED) {
+    renderDashboardCharts();
+    return;
+  }
+
+  // Créer le conteneur pageDashboard s'il n'existe pas
+  if (!document.getElementById('pageTableaudebord')) {
+    const main = document.querySelector('.main');
+    if (!main) return;
+
+    const div = document.createElement('div');
+    div.id = 'pageTableaudebord';
+    div.innerHTML = `
+      <div class="page-header">
+        <div class="page-title"><span>📈</span> Tableau de Bord</div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="card-title">🔍 Filtres</div>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end">
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Période</label>
+              <select class="form-select" id="dashYear" onchange="renderDashboardCharts()" style="width:auto">
+                <option value="">Toutes les années</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Mois</label>
+              <select class="form-select" id="dashMonth" onchange="renderDashboardCharts()" style="width:auto">
+                <option value="">Tous les mois</option>
+                ${['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+                  .map((m,i) => `<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Ingrédient</label>
+              <select class="form-select" id="dashIngredient" onchange="renderDashboardCharts()" style="width:200px">
+                <option value="">Tous les ingrédients</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:var(--text3);display:block;margin-bottom:4px">Recette</label>
+              <select class="form-select" id="dashRecette" onchange="renderDashboardCharts()" style="width:200px">
+                <option value="">Toutes les recettes</option>
+              </select>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="exportDashboardCsv()">⬇️ CSV</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <div class="card-title">🥦 Évolution du prix des ingrédients</div>
+        </div>
+        <div class="card-body">
+          <div id="dashIngChartContainer" style="position:relative;width:100%;min-height:360px">
+            <canvas id="dashIngChart" style="width:100%;height:340px"></canvas>
+          </div>
+          <div id="dashIngNoData" style="display:none;text-align:center;padding:40px;color:var(--text3)">
+            <div style="font-size:32px;margin-bottom:8px">📊</div>
+            <div>Aucune donnée de prix pour la période sélectionnée</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🍽️ Évolution du coût des recettes</div>
+        </div>
+        <div class="card-body">
+          <div id="dashRecChartContainer" style="position:relative;width:100%;min-height:360px">
+            <canvas id="dashRecChart" style="width:100%;height:340px"></canvas>
+          </div>
+          <div id="dashRecNoData" style="display:none;text-align:center;padding:40px;color:var(--text3)">
+            <div style="font-size:32px;margin-bottom:8px">📊</div>
+            <div>Aucune donnée de coût pour la période sélectionnée</div>
+          </div>
+        </div>
+      </div>
+    `;
+    main.appendChild(div);
+
+    // Remplir les filtres avec les données disponibles
+    if (RECEPTIONS.length) {
+      const years = [...new Set(RECEPTIONS.map(r => r.date ? r.date.slice(0,4) : '').filter(Boolean))].sort();
+      const yearSel = document.getElementById('dashYear');
+      years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = y; yearSel.appendChild(o); });
+
+      const ings = [...new Set(RECEPTIONS.filter(r => r.prix && parseFloat(String(r.prix).replace(',','.')) > 0).map(r => r.produit).filter(Boolean))].sort();
+      const ingSel = document.getElementById('dashIngredient');
+      ings.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; ingSel.appendChild(o); });
+    }
+
+    if (PRODUCTIONS.length) {
+      const recs = [...new Set(PRODUCTIONS.filter(r => r.cout_ligne && parseFloat(String(r.cout_ligne).replace(',','.')) > 0).map(r => r.recette).filter(Boolean))].sort();
+      const recSel = document.getElementById('dashRecette');
+      recs.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; recSel.appendChild(o); });
+    }
+
+    DASHBOARD_INITIALIZED = true;
+  }
+
+  renderDashboardCharts();
+}
+
+// Redimensionnement responsive des graphiques
+let dashResizeTimer = null;
+window.addEventListener('resize', function() {
+  const page = document.getElementById('pageTableaudebord');
+  if (!page || page.style.display === 'none') return;
+  clearTimeout(dashResizeTimer);
+  dashResizeTimer = setTimeout(function() {
+    renderDashboardCharts();
+  }, 200);
+});
+
+function getMonthYear(dateStr) {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-');
+  if (parts.length < 2) return null;
+  return { year: parts[0], month: parts[1] };
+}
+
+function renderDashboardCharts() {
+  const year = document.getElementById('dashYear')?.value || '';
+  const month = document.getElementById('dashMonth')?.value || '';
+  const filterIng = (document.getElementById('dashIngredient')?.value || '').toLowerCase();
+  const filterRec = (document.getElementById('dashRecette')?.value || '').toLowerCase();
+
+  // ── Graphique 1 : Évolution prix ingrédients ──
+  renderIngredientChart(year, month, filterIng);
+
+  // ── Graphique 2 : Évolution coût recettes ──
+  renderRecipeChart(year, month, filterRec);
+}
+
+function renderIngredientChart(year, month, filterIng) {
+  const canvas = document.getElementById('dashIngChart');
+  const container = document.getElementById('dashIngChartContainer');
+  const noData = document.getElementById('dashIngNoData');
+  if (!canvas || !container || !noData) return;
+
+  // Filtrer les réceptions avec prix
+  let data = RECEPTIONS.filter(r => r.prix && parseFloat(String(r.prix).replace(',','.')) > 0);
+
+  if (year) data = data.filter(r => r.date && r.date.slice(0,4) === year);
+  if (month) data = data.filter(r => r.date && r.date.slice(5,7) === month);
+  if (filterIng) data = data.filter(r => (r.produit || '').toLowerCase() === filterIng);
+
+  if (!data.length) {
+    canvas.style.display = 'none';
+    noData.style.display = 'block';
+    return;
+  }
+
+  canvas.style.display = 'block';
+  noData.style.display = 'none';
+
+  // Grouper par (ingrédient, mois) et calculer le prix moyen
+  const groups = {};
+  data.forEach(r => {
+    const my = getMonthYear(r.date);
+    if (!my) return;
+    const key = (r.produit || 'Inconnu') + '|' + my.year + '-' + my.month;
+    if (!groups[key]) groups[key] = { sum: 0, count: 0, produit: r.produit || 'Inconnu', year: my.year, month: my.month };
+    groups[key].sum += parseFloat(String(r.prix).replace(',','.'));
+    groups[key].count++;
+  });
+
+  // Organiser par série (produit) et points (mois)
+  const series = {};
+  Object.values(groups).forEach(g => {
+    const p = g.produit;
+    if (!series[p]) series[p] = [];
+    series[p].push({ label: g.month + '/' + g.year, x: g.year + '-' + g.month, y: g.sum / g.count });
+  });
+
+  // Trier les points par date
+  Object.values(series).forEach(s => s.sort((a, b) => a.x.localeCompare(b.x)));
+
+  drawLineChart(canvas, series, 'Prix unitaire moyen (€)', container);
+}
+
+function renderRecipeChart(year, month, filterRec) {
+  const canvas = document.getElementById('dashRecChart');
+  const container = document.getElementById('dashRecChartContainer');
+  const noData = document.getElementById('dashRecNoData');
+  if (!canvas || !container || !noData) return;
+
+  // Filtrer les productions avec coût — grouper par production (ID) pour avoir le coût total par production
+  let data = PRODUCTIONS.filter(r => r.cout_ligne && parseFloat(String(r.cout_ligne).replace(',','.')) > 0);
+
+  if (year) data = data.filter(r => r.date && r.date.slice(0,4) === year);
+  if (month) data = data.filter(r => r.date && r.date.slice(5,7) === month);
+  if (filterRec) data = data.filter(r => (r.recette || '').toLowerCase() === filterRec);
+
+  if (!data.length) {
+    canvas.style.display = 'none';
+    noData.style.display = 'block';
+    return;
+  }
+
+  canvas.style.display = 'block';
+  noData.style.display = 'none';
+
+  // Grouper par recette + mois, agréger le coût total
+  const groups = {};
+  data.forEach(r => {
+    const my = getMonthYear(r.date);
+    if (!my) return;
+    const key = (r.recette || 'Inconnue') + '|' + my.year + '-' + my.month;
+    if (!groups[key]) groups[key] = { sum: 0, count: 0, recette: r.recette || 'Inconnue', year: my.year, month: my.month };
+    const cout = parseFloat(String(r.cout_ligne).replace(',','.')) || 0;
+    groups[key].sum += cout;
+    groups[key].count++;
+  });
+
+  // Organiser par série (recette) et points (mois)
+  const series = {};
+  Object.values(groups).forEach(g => {
+    const r = g.recette;
+    if (!series[r]) series[r] = [];
+    series[r].push({ label: g.month + '/' + g.year, x: g.year + '-' + g.month, y: g.sum });
+  });
+
+  // Trier par date
+  Object.values(series).forEach(s => s.sort((a, b) => a.x.localeCompare(b.x)));
+
+  drawLineChart(canvas, series, 'Coût total (€)', container);
+}
+
+function drawLineChart(canvas, series, yLabel, container) {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = container.getBoundingClientRect();
+  const w = rect.width || 800;
+  const h = 340;
+
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad = { top: 20, right: 20, bottom: 60, left: 70 };
+  const chartW = w - pad.left - pad.right;
+  const chartH = h - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Collecter tous les labels X (dates uniques triées)
+  const allPoints = {};
+  Object.entries(series).forEach(([name, pts]) => {
+    pts.forEach(p => { allPoints[p.x] = true; });
+  });
+  const xLabels = Object.keys(allPoints).sort();
+
+  // Déterminer les bornes Y
+  let minY = Infinity, maxY = -Infinity;
+  Object.values(series).forEach(pts => {
+    pts.forEach(p => {
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    });
+  });
+  if (minY === Infinity) { minY = 0; maxY = 100; }
+  const yRange = maxY - minY || 1;
+  const yPad = yRange * 0.1 || 1;
+  minY = Math.max(0, minY - yPad);
+  maxY = maxY + yPad;
+
+  const toX = (x) => pad.left + (xLabels.indexOf(x) / Math.max(xLabels.length - 1, 1)) * chartW;
+  const toY = (y) => pad.top + chartH - ((y - minY) / (maxY - minY)) * chartH;
+
+  // Fond du graphique
+  ctx.fillStyle = '#f8f9fa';
+  ctx.fillRect(pad.left, pad.top, chartW, chartH);
+
+  // Grille horizontale
+  ctx.strokeStyle = '#e9ecef';
+  ctx.lineWidth = 1;
+  const nGrid = 5;
+  for (let i = 0; i <= nGrid; i++) {
+    const y = pad.top + (i / nGrid) * chartH;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(pad.left + chartW, y);
+    ctx.stroke();
+
+    // Labels Y
+    const val = maxY - (i / nGrid) * (maxY - minY);
+    ctx.fillStyle = '#868e96';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(val.toFixed(2) + '€', pad.left - 8, y);
+  }
+
+  // Labels X
+  ctx.fillStyle = '#868e96';
+  ctx.font = '10px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  xLabels.forEach((x, i) => {
+    if (xLabels.length > 12 && i % Math.ceil(xLabels.length / 12) !== 0) return;
+    ctx.fillText(x, toX(x), pad.top + chartH + 8);
+  });
+
+  // Titre axe Y
+  ctx.save();
+  ctx.translate(14, pad.top + chartH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = '#495057';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(yLabel, 0, 0);
+  ctx.restore();
+
+  // Palette de couleurs
+  const palette = [
+    '#1f8c88', '#67b54b', '#e05c5c', '#f0a500', '#6f42c1',
+    '#20c997', '#fd7e14', '#e83e8c', '#0d6efd', '#198754',
+    '#dc3545', '#ffc107', '#6610f2', '#17a2b8', '#6c757d'
+  ];
+
+  // Tracer les courbes et stocker les positions des points
+  const keys = Object.keys(series);
+  const pointsData = []; // { seriesName, label, value, sx, sy }
+
+  keys.forEach((name, idx) => {
+    const pts = series[name];
+    const color = palette[idx % palette.length];
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    pts.forEach((p, i) => {
+      const sx = toX(p.x);
+      const sy = toY(p.y);
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    });
+    ctx.stroke();
+
+    // Points + stockage pour le tooltip
+    ctx.fillStyle = color;
+    pts.forEach(p => {
+      const sx = toX(p.x);
+      const sy = toY(p.y);
+      ctx.beginPath();
+      ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+      ctx.fill();
+      pointsData.push({
+        seriesName: name,
+        seriesColor: color,
+        label: p.label || p.x,
+        value: p.y,
+        sx: sx,
+        sy: sy
+      });
+    });
+  });
+
+  // ── Tooltip au survol ──
+  let tooltipEl = container.querySelector('.chart-tooltip');
+  if (!tooltipEl) {
+    tooltipEl = document.createElement('div');
+    tooltipEl.className = 'chart-tooltip';
+    tooltipEl.style.cssText = 'position:absolute;pointer-events:none;background:#1a1a2e;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,0.2);z-index:100;opacity:0;transition:opacity 0.15s ease;white-space:nowrap;font-family:system-ui,sans-serif';
+    container.appendChild(tooltipEl);
+  }
+
+  const onMove = function(e) {
+    const cr = canvas.getBoundingClientRect();
+    const mx = e.clientX - cr.left;
+    const my = e.clientY - cr.top;
+
+    // Trouver le point le plus proche dans un rayon de 14px
+    let nearest = null;
+    let minDist = 14;
+    pointsData.forEach(pt => {
+      const dx = mx - pt.sx;
+      const dy = my - pt.sy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < minDist) { minDist = dist; nearest = pt; }
+    });
+
+    if (nearest) {
+      tooltipEl.style.opacity = '1';
+      tooltipEl.innerHTML = '<div style="font-weight:600;margin-bottom:2px">' + nearest.seriesName + '</div>'
+        + '<div style="color:#adb5bd;font-size:11px">' + nearest.label + '</div>'
+        + '<div style="margin-top:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + nearest.seriesColor + ';vertical-align:middle;margin-right:5px"></span><strong>' + nearest.value.toFixed(2) + '€</strong></div>';
+
+      // Positionner le tooltip
+      let tx = nearest.sx + 12;
+      let ty = nearest.sy - 10;
+      // Éviter les bords
+      if (tx + 160 > w) tx = nearest.sx - 160;
+      if (ty < 0) ty = nearest.sy + 20;
+      if (ty + 50 > h) ty = nearest.sy - 40;
+      tooltipEl.style.left = tx + 'px';
+      tooltipEl.style.top = ty + 'px';
+    } else {
+      tooltipEl.style.opacity = '0';
+    }
+  };
+
+  const onLeave = function() {
+    tooltipEl.style.opacity = '0';
+  };
+
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseleave', onLeave);
+
+  // Nettoyer les anciens écouteurs si le canvas est redessiné
+  // On stocke les refs pour les supprimer avant d'en ajouter de nouveaux
+  if (canvas._dashListeners) {
+    canvas.removeEventListener('mousemove', canvas._dashListeners.move);
+    canvas.removeEventListener('mouseleave', canvas._dashListeners.leave);
+  }
+  canvas._dashListeners = { move: onMove, leave: onLeave };
+
+  // Légende
+  const legendEl = container.querySelector('.chart-legend');
+  if (legendEl) legendEl.remove();
+
+  if (keys.length > 0) {
+    const lg = document.createElement('div');
+    lg.className = 'chart-legend';
+    lg.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 16px;padding:12px 8px 0;justify-content:center';
+    keys.forEach((name, idx) => {
+      const item = document.createElement('span');
+      item.style.cssText = 'display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)';
+      item.innerHTML = '<span style="display:inline-block;width:12px;height:4px;border-radius:2px;background:' + palette[idx % palette.length] + '"></span> ' + name;
+      lg.appendChild(item);
+    });
+    container.appendChild(lg);
+  }
+}
+
+function exportDashboardCsv() {
+  const year = document.getElementById('dashYear')?.value || '';
+  const month = document.getElementById('dashMonth')?.value || '';
+  const filterIng = (document.getElementById('dashIngredient')?.value || '').toLowerCase();
+  const filterRec = (document.getElementById('dashRecette')?.value || '').toLowerCase();
+
+  let csv = '\uFEFF'; // BOM UTF-8
+  csv += 'Type;Date;Ingrédient/Recette;Prix unitaire (€);Quantité;Unité\n';
+
+  // Lignes ingrédients
+  let recData = RECEPTIONS.filter(r => r.prix && parseFloat(String(r.prix).replace(',','.')) > 0);
+  if (year) recData = recData.filter(r => r.date && r.date.slice(0,4) === year);
+  if (month) recData = recData.filter(r => r.date && r.date.slice(5,7) === month);
+  if (filterIng) recData = recData.filter(r => (r.produit || '').toLowerCase() === filterIng);
+
+  recData.forEach(r => {
+    csv += `Ingrédient;${r.date || ''};${r.produit || ''};${r.prix || ''};${r.quantite || ''};${r.unite || ''}\n`;
+  });
+
+  // Lignes productions
+  let prodData = PRODUCTIONS.filter(r => r.cout_ligne && parseFloat(String(r.cout_ligne).replace(',','.')) > 0);
+  if (year) prodData = prodData.filter(r => r.date && r.date.slice(0,4) === year);
+  if (month) prodData = prodData.filter(r => r.date && r.date.slice(5,7) === month);
+  if (filterRec) prodData = prodData.filter(r => (r.recette || '').toLowerCase() === filterRec);
+
+  prodData.forEach(r => {
+    csv += `Production;${r.date || ''};${r.recette || ''};${r.cout_ligne || ''};${r.poids_ingredient || ''};g\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tableau_de_bord_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 </script>
 <!-- MODAL RESSOURCE -->
