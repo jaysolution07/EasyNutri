@@ -2348,7 +2348,7 @@ function renderReceptionDraft() {
         <div class="form-group"><label class="form-label">Type produit</label><select class="form-select" onchange="syncReceptionLine(${idx},'type_produit',this.value)">
           ${['Frais','Surgele','Ambiant'].map(v => `<option value="${v}" ${line.type_produit===v?'selected':''}>${v}</option>`).join('')}
         </select><div class="text-xs text-muted mt-2">Cible: ${rule.label}</div></div>
-        <div class="form-group"><label class="form-label">N° lot *</label><input class="form-input" value="${escHtml(line.lot)}" oninput="syncReceptionLine(${idx},'lot',this.value)" placeholder="Lot fournisseur"></div>
+        <div class="form-group"><label class="form-label">N° lot *</label><div style="display:flex;gap:6px"><input class="form-input" style="flex:1" value="${escHtml(line.lot)}" oninput="syncReceptionLine(${idx},'lot',this.value)" placeholder="Lot fournisseur"><button class="btn btn-ghost" type="button" onclick="scanBarcode('lot',${idx})" title="Scanner le lot">📷</button></div></div>
         <div class="form-group"><label class="form-label">Quantité *</label><input class="form-input" value="${escHtml(line.quantite)}" oninput="syncReceptionLine(${idx},'quantite',this.value)" inputmode="decimal" placeholder="Ex: 5"></div>
         <div class="form-group"><label class="form-label">Unité *</label><select class="form-select" onchange="syncReceptionLine(${idx},'unite',this.value)">
           ${['kg','g','L','mL','pièce'].map(v => `<option value="${v}" ${line.unite===v?'selected':''}>${v}</option>`).join('')}
@@ -2357,7 +2357,7 @@ function renderReceptionDraft() {
         <div class="form-group"><label class="form-label">DLC/DDM type</label><select class="form-select" onchange="syncReceptionLine(${idx},'dlc_ddm_type',this.value)">
           ${['DLC','DDM'].map(v => `<option value="${v}" ${line.dlc_ddm_type===v?'selected':''}>${v}</option>`).join('')}
         </select></div>
-        <div class="form-group"><label class="form-label">DLC/DDM</label><input class="form-input" type="date" value="${escHtml(line.dlc_ddm)}" onchange="syncReceptionLine(${idx},'dlc_ddm',this.value)"></div>
+        <div class="form-group"><label class="form-label">DLC/DDM</label><div style="display:flex;gap:6px"><input class="form-input" style="flex:1" type="date" value="${escHtml(line.dlc_ddm)}" onchange="syncReceptionLine(${idx},'dlc_ddm',this.value)"><button class="btn btn-ghost" type="button" onclick="scanBarcode('dlc',${idx})" title="Scanner la DLC">📷</button></div></div>
         <div class="form-group"><label class="form-label">Temperature reception</label><input class="form-input" value="${escHtml(line.temperature)}" oninput="syncReceptionLine(${idx},'temperature',this.value)" inputmode="decimal" placeholder="Ex: 3,5"></div>
         <div class="form-group"><label class="form-label">Conformite</label><select class="form-select" ${tempBad ? 'disabled' : ''} onchange="syncReceptionLine(${idx},'conformite',this.value)">
           ${['Conforme','Non conforme'].map(v => `<option value="${v}" ${conf===v?'selected':''}>${v}</option>`).join('')}
@@ -7926,6 +7926,275 @@ function exportDashboardCsv() {
   a.download = 'tableau_de_bord_' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Scanner code-barres (téléphone) ──
+let scanStream = null;
+let scanTimer = null;
+
+function scanBarcode(field, lineIdx) {
+  // Vérifier si BarcodeDetector est disponible — sinon utiliser la capture photo
+  if (!('BarcodeDetector' in window)) {
+    scanViaCamera(field, lineIdx);
+    return;
+  }
+
+  // Créer la modale de scan si elle n'existe pas
+  if (!document.getElementById('scanModal')) {
+    const div = document.createElement('div');
+    div.id = 'scanModal';
+    div.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;flex-direction:column;padding:20px';
+    div.innerHTML = `
+      <div style="position:relative;max-width:100%;width:360px;border-radius:16px;overflow:hidden;background:#000;box-shadow:0 8px 40px rgba(0,0,0,0.5)">
+        <video id="scanVideo" autoplay playsinline style="width:100%;height:auto;display:block"></video>
+        <div id="scanLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,0.6);color:#fff;font-size:14px;gap:8px">
+          <div style="width:32px;height:32px;border:3px solid rgba(255,255,255,0.3);border-top:3px solid #67b54b;border-radius:50%;animation:spin 0.8s linear infinite"></div>
+          <span>Activation de la caméra...</span>
+        </div>
+        <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+        <div id="scanOverlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+          <div style="width:220px;height:120px;border:3px solid rgba(103,181,75,0.7);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.4);position:relative">
+            <div style="position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:rgba(103,181,75,0.9);color:#fff;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap">Placez le code-barres ici</div>
+            <div style="position:absolute;top:-3px;left:-3px;width:20px;height:20px;border-top:3px solid #67b54b;border-left:3px solid #67b54b;border-radius:4px 0 0 0"></div>
+            <div style="position:absolute;top:-3px;right:-3px;width:20px;height:20px;border-top:3px solid #67b54b;border-right:3px solid #67b54b;border-radius:0 4px 0 0"></div>
+            <div style="position:absolute;bottom:-3px;left:-3px;width:20px;height:20px;border-bottom:3px solid #67b54b;border-left:3px solid #67b54b;border-radius:0 0 0 4px"></div>
+            <div style="position:absolute;bottom:-3px;right:-3px;width:20px;height:20px;border-bottom:3px solid #67b54b;border-right:3px solid #67b54b;border-radius:0 0 4px 0"></div>
+          </div>
+        </div>
+        <div id="scanResult" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.75);flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px">
+          <div style="color:#67b54b;font-size:40px">✅</div>
+          <div style="color:#fff;font-size:16px;font-weight:600;text-align:center;word-break:break-all" id="scanResultText"></div>
+          <div style="display:flex;gap:10px;margin-top:4px">
+            <button class="btn btn-secondary" onclick="stopScan()" style="padding:10px 20px;border-radius:10px;font-size:13px">❌ Ignorer</button>
+            <button class="btn btn-primary" id="scanConfirmBtn" style="padding:10px 20px;border-radius:10px;font-size:13px">✅ Valider</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:12px">
+        <button class="btn btn-secondary" onclick="stopScan()" style="padding:10px 24px;border-radius:12px;font-size:14px">✕ Annuler</button>
+        <button class="btn btn-primary" onclick="captureScanManual()" style="padding:10px 24px;border-radius:12px;font-size:14px">📸 Capturer</button>
+      </div>
+    `;
+    document.body.appendChild(div);
+    document.getElementById('scanConfirmBtn').addEventListener('click', function() {
+      const val = document.getElementById('scanResultText').textContent;
+      if (val) applyScanResult(val);
+    });
+  }
+
+  // Stocker le callback dans un attribut data
+  const modal = document.getElementById('scanModal');
+  modal.dataset.field = field;
+  modal.dataset.lineIdx = lineIdx;
+  document.getElementById('scanResult').style.display = 'none';
+  document.getElementById('scanResult').textContent = '';
+
+  // Ouvrir la caméra
+  modal.style.display = 'flex';
+  startScanCamera();
+}
+
+// Fallback iOS : capture via appareil photo, puis détection ou saisie manuelle
+function scanViaCamera(field, lineIdx) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.onchange = async function(e) {
+    const file = e.target.files && e.target.files[0];
+    input.remove();
+    if (!file) return;
+    try {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise(r => { img.onload = r; });
+
+      // Si BarcodeDetector est disponible (iOS 16.4+), tenter la détection
+      if ('BarcodeDetector' in window) {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        c.getContext('2d').drawImage(img, 0, 0);
+        const bd = new BarcodeDetector({ formats: ['qr_code','ean_13','ean_8','code_128','code_39','code_93','codabar','data_matrix','itf','pdf417','aztec','upc_a','upc_e'] });
+        const codes = await bd.detect(c);
+        if (codes.length > 0) {
+          showScanConfirm(codes[0].rawValue);
+          return;
+        }
+      }
+      // Pas de détection : afficher la photo pour saisie manuelle
+      const modal = document.getElementById('scanModal');
+      if (!modal) return;
+      modal.innerHTML = `
+        <div style="max-width:100%;width:360px;border-radius:16px;overflow:hidden;background:var(--bg);box-shadow:0 8px 40px rgba(0,0,0,0.3)">
+          <img src="${img.src}" style="width:100%;height:auto;display:block">
+          <div style="padding:20px">
+            <div style="font-size:16px;font-weight:600;margin-bottom:12px">${field === 'lot' ? 'Numéro de lot' : 'DLC/DDM'}</div>
+            <input class="form-input" id="scanManualInput" placeholder="Saisir la valeur lue sur la photo..." style="font-size:16px;padding:12px">
+            <div style="display:flex;gap:10px;margin-top:16px">
+              <button class="btn btn-secondary" onclick="stopScan()" style="flex:1;padding:12px;border-radius:10px;font-size:14px">✕ Annuler</button>
+              <button class="btn btn-primary" onclick="applyManualScan('${field}',${lineIdx})" style="flex:1;padding:12px;border-radius:10px;font-size:14px">✅ Valider</button>
+            </div>
+          </div>
+        </div>
+      `;
+    } catch(err) {
+      toast('Erreur: ' + (err.message || ''), 'error');
+    }
+  };
+  input.click();
+}
+
+function applyManualScan(field, lineIdx) {
+  const val = document.getElementById('scanManualInput')?.value?.trim();
+  if (!val) { toast('Veuillez saisir une valeur', 'warning'); return; }
+  if (field === 'lot') syncReceptionLine(lineIdx, 'lot', val);
+  else syncReceptionLine(lineIdx, 'dlc_ddm', val);
+  stopScan();
+  toast('Champ mis à jour', 'success');
+}
+
+async function startScanCamera() {
+  try {
+    if (scanStream) {
+      scanStream.getTracks().forEach(t => t.stop());
+      scanStream = null;
+    }
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+
+    // Afficher le chargement
+    const loading = document.getElementById('scanLoading');
+    if (loading) loading.style.display = 'flex';
+
+    scanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+    });
+    const video = document.getElementById('scanVideo');
+    video.srcObject = scanStream;
+    await video.play();
+
+    // Cacher le chargement
+    if (loading) loading.style.display = 'none';
+
+    // Démarrer la détection
+    const barcodeDetector = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'code_93', 'codabar', 'data_matrix', 'itf', 'pdf417', 'aztec', 'upc_a', 'upc_e'] });
+    let alreadyDetected = false;
+    scanTimer = setInterval(async () => {
+      if (alreadyDetected) return;
+      try {
+        const barcodes = await barcodeDetector.detect(video);
+        if (barcodes.length > 0) {
+          alreadyDetected = true;
+          clearInterval(scanTimer);
+          scanTimer = null;
+          const value = barcodes[0].rawValue;
+          // Vibrer si possible
+          if (navigator.vibrate) navigator.vibrate(100);
+          // Afficher la confirmation
+          const resultEl = document.getElementById('scanResult');
+          const textEl = document.getElementById('scanResultText');
+          if (resultEl && textEl) {
+            textEl.textContent = value;
+            resultEl.style.display = 'flex';
+          }
+        }
+      } catch(e) { /* pas de détection sur cette frame */ }
+    }, 300);
+  } catch(e) {
+    toast('Erreur d\'accès à la caméra: ' + (e.message || 'Permission refusée'), 'error');
+    stopScan();
+  }
+}
+
+function applyScanResult(value) {
+  const modal = document.getElementById('scanModal');
+  if (!modal || modal.style.display === 'none') return;
+  const field = modal.dataset.field;
+  const lineIdx = parseInt(modal.dataset.lineIdx);
+
+  if (field === 'lot') {
+    syncReceptionLine(lineIdx, 'lot', value);
+  } else if (field === 'dlc') {
+    // Tenter de parser une date depuis le code-barres
+    const cleaned = value.replace(/[^0-9]/g, '');
+    let dateStr = '';
+    if (cleaned.length === 6) {
+      // Format JJMMAA
+      const day = cleaned.slice(0,2);
+      const month = cleaned.slice(2,4);
+      const year = '20' + cleaned.slice(4,6);
+      dateStr = year + '-' + month + '-' + day;
+    } else if (cleaned.length === 8) {
+      // Format AAAAMMJJ
+      dateStr = cleaned.slice(0,4) + '-' + cleaned.slice(4,6) + '-' + cleaned.slice(6,8);
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      dateStr = value;
+    }
+    if (dateStr && dateStr.length === 10) {
+      syncReceptionLine(lineIdx, 'dlc_ddm', dateStr);
+    } else {
+      // Pas une date, mettre dans le lot
+      syncReceptionLine(lineIdx, 'lot', value);
+    }
+  }
+
+  stopScan();
+  toast('Champ mis à jour: ' + value, 'success');
+}
+
+function captureScanManual() {
+  const video = document.getElementById('scanVideo');
+  if (!video || !scanStream) return;
+
+  // Capturer une frame et tenter la détection
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  if ('BarcodeDetector' in window) {
+    const barcodeDetector = new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'code_93', 'codabar', 'data_matrix', 'itf', 'pdf417', 'aztec', 'upc_a', 'upc_e'] });
+    barcodeDetector.detect(canvas).then(barcodes => {
+      if (barcodes.length > 0) {
+        showScanConfirm(barcodes[0].rawValue);
+      } else {
+        toast('Aucun code-barres détecté', 'warning');
+      }
+    }).catch(() => {
+      toast('Erreur de détection', 'error');
+    });
+  }
+}
+
+function showScanConfirm(value) {
+  const resultEl = document.getElementById('scanResult');
+  const textEl = document.getElementById('scanResultText');
+  if (resultEl && textEl) {
+    textEl.textContent = value;
+    resultEl.style.display = 'flex';
+  }
+  if (navigator.vibrate) navigator.vibrate(100);
+}
+
+function stopScan() {
+  const modal = document.getElementById('scanModal');
+  if (modal) modal.style.display = 'none';
+
+  if (scanTimer) {
+    clearInterval(scanTimer);
+    scanTimer = null;
+  }
+
+  if (scanStream) {
+    scanStream.getTracks().forEach(t => t.stop());
+    scanStream = null;
+  }
+
+  const video = document.getElementById('scanVideo');
+  if (video) video.srcObject = null;
 }
 
 </script>
