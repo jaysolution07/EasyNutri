@@ -2269,6 +2269,12 @@ function addReceptionLine(line = {}) {
     action: line.action || '',
     regle: line.regle || 'Non-réglé'
   });
+  // Prefill price from ingredient standard price
+  const ingPrefill = findIngredientByName(line.produit || '');
+  if (ingPrefill && ingPrefill.prix_kg && !line.prix) {
+    const lastEntry = receptionDraft[receptionDraft.length - 1];
+    if (lastEntry) lastEntry.prix = String(ingPrefill.prix_kg).replace('.', ',');
+  }
   renderReceptionDraft();
 }
 function removeReceptionLine(idx) {
@@ -2339,6 +2345,7 @@ function renderReceptionDraft() {
         <div class="form-group"><label class="form-label">Unité *</label><select class="form-select" onchange="syncReceptionLine(${idx},'unite',this.value)">
           ${['kg','g','L','mL','pièce'].map(v => `<option value="${v}" ${line.unite===v?'selected':''}>${v}</option>`).join('')}
         </select></div>
+        <div class="form-group"><label class="form-label">Prix unitaire (€)</label><input class="form-input" value="${escHtml(line.prix)}" oninput="syncReceptionLine(${idx},'prix',this.value)" inputmode="decimal" placeholder="Ex: 2,50"><div class="text-xs text-muted mt-2">€/${escHtml(line.unite || 'kg')}</div></div>
         <div class="form-group"><label class="form-label">DLC/DDM type</label><select class="form-select" onchange="syncReceptionLine(${idx},'dlc_ddm_type',this.value)">
           ${['DLC','DDM'].map(v => `<option value="${v}" ${line.dlc_ddm_type===v?'selected':''}>${v}</option>`).join('')}
         </select></div>
@@ -2375,7 +2382,8 @@ async function saveReceptionBL() {
     dlc_ddm_type: line.dlc_ddm_type, dlc_ddm: line.dlc_ddm,
     temperature: line.temperature,
     temperature_cible: receptionTempLimit(line.type_produit).label,
-    conformite: line.conformite, action: line.action, regle: line.regle
+    conformite: line.conformite, action: line.action, regle: line.regle,
+    prix: line.prix || ''
   }));
   RECEPTIONS = optimistic.concat(RECEPTIONS.filter(r => r.id_bl !== recEditingBlId));
   renderReceptionsList();
@@ -2429,7 +2437,8 @@ function editReceptionBL(idBl) {
     temperature: r.temperature || '',
     conformite: r.conformite || 'Conforme',
     action: r.action || '',
-    regle: r.regle || 'Non-réglé'
+    regle: r.regle || 'Non-réglé',
+    prix: r.prix || ''
   }));
   renderReceptionDraft();
   document.getElementById('receptionFormCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2570,6 +2579,7 @@ function renderProductionTrace() {
       <div class="trace-result-meta" style="margin-top:8px">${ingredients}</div>
       <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
         <button class="btn btn-secondary btn-sm" onclick="openProductionFromHistory('${escHtml(p.id_production)}')">Refaire etiquette</button>
+        <button class="btn btn-primary btn-sm" onclick="openProductionFromHistory('${escHtml(p.id_production)}');setTimeout(()=>prodExport(),100)">📄 Télécharger PDF</button>
       </div>
     </div>`;
   }).join('');
@@ -2585,6 +2595,7 @@ function exportProductionsCsv(all) {
     'ID_Production','Date','Recette','Lot recette','DLC/DDM_type','DLC/DDM',
     'Poids recette base (g)','Poids recette produite (g)','Contenants','Nb etiquettes',
     'Ingredient','Lot ingredient','DLC/DDM ingredient','Poids ingredient (g)',
+    'Prix unitaire (€)','Coût ligne (€)',
     'Energie kJ/100g','Energie kcal/100g','Proteines g/100g','Glucides g/100g',
     'Sucres g/100g','Lipides g/100g','AGS g/100g','Sel g/100g','Fibres g/100g','Allergenes'
   ];
@@ -2592,6 +2603,7 @@ function exportProductionsCsv(all) {
     p.id_production,p.date,p.recette,p.lot_recette,p.dlc_ddm_type,p.dlc_ddm,
     p.poids_recette_base,p.poids_recette_produite,p.contenants,p.nb_etiquettes,
     p.ingredient,p.lot_ingredient,p.dlc_ddm_ingredient,p.poids_ingredient,
+    p.prix_unitaire || '',p.cout_ligne || '',
     p.energie_kj,p.energie_kcal,p.proteines_g,p.glucides_g,p.sucres_g,p.lipides_g,p.ags_g,p.sel_g,p.fibres_g,p.allergenes
   ]);
   const csv = [headers, ...values].map(row => row.map(csvEscape).join(';')).join('\n');
@@ -2726,7 +2738,9 @@ function buildProductionPayload() {
             ags_g: poidsTotal > 0 ? ((parseFloat(ing.Ags) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
             sel_g: poidsTotal > 0 ? ((parseFloat(ing.sel_g) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
             fibres_g: poidsTotal > 0 ? ((parseFloat(ing.fibres_g) || 0) * poidsLine / poidsTotal).toFixed(2) : '',
-            allergenes: ing.allergenes || ''
+            allergenes: ing.allergenes || '',
+            prix_unitaire: alloc.prix_unitaire || '',
+            cout_ligne: alloc.prix_unitaire && alloc.stockQty ? (parseFloat(alloc.prix_unitaire) * parseFloat(alloc.stockQty)).toFixed(2) : ''
           };
         });
       }
@@ -2749,7 +2763,7 @@ function buildProductionPayload() {
           ags_g: poidsTotal > 0 ? ((parseFloat(ing.Ags) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
           sel_g: poidsTotal > 0 ? ((parseFloat(ing.sel_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
           fibres_g: poidsTotal > 0 ? ((parseFloat(ing.fibres_g) || 0) * (parseFloat(row.poids) || 0) / poidsTotal).toFixed(2) : '',
-          allergenes: ing.allergenes || ''
+          allergenes: ing.allergenes || '',
         };
       });
     })()
@@ -3506,12 +3520,26 @@ async function openProductionFromHistory(productionId) {
   PROD.lotsIng = {};
   PROD.dateIng = {};
   PROD.stockLots = {};
+  PROD.lotAllocations = [];
 
   rows.forEach(row => {
     if (row.ingredient_id) {
       PROD.lotsIng[row.ingredient_id] = row.lot_ingredient || '';
       PROD.dateIng[row.ingredient_id] = row.dlc_ddm_ingredient || '';
       if (row.stock_id) PROD.stockLots[row.ingredient_id] = row.stock_id;
+      // Reconstruire PROD.lotAllocations avec les prix réels des lots
+      PROD.lotAllocations.push({
+        ingId: row.ingredient_id,
+        ingNom: row.ingredient || '',
+        lot: row.lot_ingredient || '',
+        dlc: row.dlc_ddm_ingredient || '',
+        qty: parseFloat(String(row.poids_ingredient || '0').replace(',', '.')) || 0,
+        stockQty: parseFloat(String(row.poids_ingredient || '0').replace(',', '.')) || 0,
+        stockUnite: 'g',
+        unite: 'g',
+        prix_unitaire: row.prix_unitaire || '',
+        cout_ligne: row.cout_ligne || ''
+      });
     }
   });
 
@@ -3645,7 +3673,8 @@ async function openModalProduction() {
           dlc: a.dlc,
           qty: a.qty,
           stockQty: a.stockQty,
-          stockUnite: a.stockUnite
+          stockUnite: a.stockUnite,
+          prix_unitaire: a.prix_unitaire || ''
         });
       });
       
@@ -3659,6 +3688,7 @@ async function openModalProduction() {
               data-ing-id="${ing.id}" data-stock-id="${escHtml(a.stockId)}"
               data-lot="${escHtml(a.lot)}" data-dlc="${escHtml(a.dlc || '')}"
               data-stock-unite="${escHtml(a.stockUnite || 'g')}"
+              data-prix-unitaire="${escHtml(String(a.prix_unitaire || ''))}"
               value="${a.qty}" max="${a.maxQty}"
               style="width:90px;font-size:12px;padding:4px 6px;text-align:right"
               onchange="onLotQtyChange(this, '${ing.id}', ${fqty})">
@@ -3816,7 +3846,8 @@ function onLotQtyChange(inputEl, ingId, neededQty) {
       dlc: dlc,
       qty: qty,
       stockQty: gramsToStockQty(qty, stockUnite), // dans l'unité du stock
-      stockUnite: stockUnite
+      stockUnite: stockUnite,
+      prix_unitaire: parseFloat(String(inp.dataset.prixUnitaire || '0').replace(',', '.')) || ''
     });
     totalAlloue += qty;
   });
@@ -4508,6 +4539,25 @@ function buildRecap() {
     ${lotsHtml || '<span style="color:var(--text3);font-size:12px">Aucun lot renseigné</span>'}
     ${PROD.mentions ? `<div style="margin-top:12px;font-size:11px;color:var(--text3);border-top:1px solid var(--border);padding-top:10px"><strong>Mentions légales :</strong> ${escHtml(PROD.mentions)}</div>` : ''}
   `;
+
+  // ---- Bandeau coût total ----
+  let coutTotal = 0;
+  const allocsCout = PROD.lotAllocations || [];
+  if (allocsCout.length) {
+    allocsCout.forEach(a => {
+      if (a.prix_unitaire && a.stockQty) {
+        coutTotal += parseFloat(a.prix_unitaire) * parseFloat(a.stockQty);
+      }
+    });
+  }
+  const recapEl = document.getElementById("prodRecap");
+  if (recapEl && coutTotal > 0) {
+    var bHtml = "<div style='background:linear-gradient(135deg,rgba(103,181,75,0.08),rgba(31,140,136,0.08));border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;gap:32px;margin-top:14px;align-items:center'>" +
+      "<div style='display:flex;align-items:baseline;gap:6px'><span style='font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px'>Coût total</span><span style='font-size:22px;font-weight:700;color:var(--g3)'>" + coutTotal.toFixed(2) + " €</span></div>" +
+      (poidsTotal > 0 ? "<div style='display:flex;align-items:baseline;gap:6px'><span style='font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px'>Pour 1kg</span><span style='font-size:18px;font-weight:700;color:var(--g2)'>" + (coutTotal/poidsTotal*1000).toFixed(2) + " €</span></div>" : "") +
+    "</div>";
+    recapEl.innerHTML += bHtml;
+  }
 }
 async function prodExport() {
   const btn = document.getElementById('btnProdExport');
@@ -4605,7 +4655,7 @@ async function prodExportPdf(closeAfter = true) {
       lotCell = escHtml(lot) + (dateIng ? `<br><span style="font-size:10px;font-weight:400;color:${dlcLabel==='DLC'?'#e05c5c':'#9a6500'}">${dlcLabel} : ${escHtml(dateIng)}</span>` : '');
     }
     const quidStr = row.quid && poidsTotal2 > 0 ? ` <span style="color:#e07c20;font-weight:700">(${(p/poidsTotal2*100).toFixed(1)}%)</span>` : '';
-    const prixLigne = (() => { const pk=parseFloat(ing.prix_kg)||0; if(!pk) return '—'; const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; return (p/eq*pk).toFixed(2)+' €'; })();
+    const prixLigne = (() => { const ingAllocs3 = (PROD.lotAllocations || []).filter(a => String(a.ingId) === String(ing.id)); if (ingAllocs3.length) { let total = 0; ingAllocs3.forEach(a => { if (a.prix_unitaire && a.stockQty) { total += parseFloat(a.stockQty) * parseFloat(a.prix_unitaire); } }); return total > 0 ? total.toFixed(2)+' €' : '—'; } const pk=parseFloat(ing.prix_kg)||0; if(!pk) return '—'; const eq=ing.unite==='L'?(parseFloat(ing.equiv_poids_g)||1000):1000; return (p/eq*pk).toFixed(2)+' €'; })();
     return `<tr>
       <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;font-weight:600">${escHtml(ing.nom)}${quidStr}${allergs.length?` <span style="color:#f0a500;font-size:10px">[${allergs.join(', ')}]</span>`:''}</td>
       <td style="padding:7px 10px;border:1px solid #d6e8de;font-size:12px;text-align:right">${p} g</td>
@@ -6895,7 +6945,8 @@ function autoAllocateLotsFIFO(ing, neededQty, stockLotsMap) {
       stockQty: stockQty, // dans l'unité du stock (pour le backend)
       stockUnite: s.unite, // unité originale du stock
       unite: displayUnite,
-      maxQty: dispo       // en grammes
+      maxQty: dispo,       // en grammes
+      prix_unitaire: parseFloat(String(s.prix_unitaire || '0').replace(',', '.')) || 0
     });
     reste -= pris;
   }
