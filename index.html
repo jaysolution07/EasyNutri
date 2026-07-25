@@ -7980,7 +7980,7 @@ function startScanCamera() {
 
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
     }).then(function(stream) {
       scanStream = stream;
       const video = document.getElementById('scanVideo');
@@ -8050,19 +8050,90 @@ function captureScanOcr() {
   }
 }
 
+/**
+ * Prétraite l'image pour améliorer la reconnaissance Tesseract :
+ * 1. Conversion en niveaux de gris
+ * 2. Auto-levels : étire le contraste sur tout le spectre [0..255]
+ * 3. Binarisation adaptative rapide (seuil par blocs précalculés)
+ */
+function preprocessImage(ctx, w, h) {
+  const imageData = ctx.getImageData(0, 0, w, h);
+  const data = imageData.data;
+  const len = data.length;
+
+  // 1. Niveaux de gris
+  for (let i = 0; i < len; i += 4) {
+    const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    data[i] = data[i + 1] = data[i + 2] = gray;
+  }
+
+  // 2. Auto-levels : trouver min/max et étirer sur tout le spectre
+  let gmin = 255, gmax = 0;
+  for (let i = 0; i < len; i += 4) {
+    const g = data[i];
+    if (g < gmin) gmin = g;
+    if (g > gmax) gmax = g;
+  }
+  const range = gmax - gmin;
+  if (range > 15) {
+    for (let i = 0; i < len; i += 4) {
+      const g = ((data[i] - gmin) / range) * 255;
+      data[i] = data[i + 1] = data[i + 2] = Math.round(g);
+    }
+  }
+
+  // 3. Binarisation adaptative rapide (seuils par blocs 48×48)
+  const blockSize = 48;
+  const gridCols = Math.ceil(w / blockSize);
+  const gridRows = Math.ceil(h / blockSize);
+
+  // Précalculer la grille des seuils (une seule passe)
+  const thresholds = [];
+  for (let gy = 0; gy < gridRows; gy++) {
+    thresholds[gy] = [];
+    for (let gx = 0; gx < gridCols; gx++) {
+      let sum = 0, count = 0;
+      const startX = gx * blockSize;
+      const startY = gy * blockSize;
+      const endX = Math.min(startX + blockSize, w);
+      const endY = Math.min(startY + blockSize, h);
+      for (let py = startY; py < endY; py++) {
+        for (let px = startX; px < endX; px++) {
+          sum += data[(py * w + px) * 4];
+          count++;
+        }
+      }
+      thresholds[gy][gx] = count > 0 ? sum / count : 128;
+    }
+  }
+
+  // Appliquer le seuillage par lookup dans la grille
+  for (let y = 0; y < h; y++) {
+    const gy = Math.floor(y / blockSize);
+    for (let x = 0; x < w; x++) {
+      const gx = Math.floor(x / blockSize);
+      const threshold = thresholds[gy][gx] - 8;
+      const idx2 = (y * w + x) * 4;
+      const val = data[idx2] > threshold ? 255 : 0;
+      data[idx2] = data[idx2 + 1] = data[idx2 + 2] = val;
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
 async function processOcrImage(file) {
   const loading = document.getElementById('scanLoading');
   const loadText = document.getElementById('scanLoadingText');
   if (loading) loading.style.display = 'flex';
-  if (loadText) loadText.textContent = 'Reconnaissance du texte...';
+  if (loadText) loadText.textContent = 'Prétraitement de l\'image...';
 
   try {
-    // Charger l'image
     const img = new Image();
     img.src = URL.createObjectURL(file);
     await new Promise(function(resolve) { img.onload = resolve; });
 
-    // Redimensionner l'image pour accélérer l'OCR (max 1200px de large)
+    // Résolution suffisante pour l'OCR (1200px max, bon équilibre vitesse/précision)
     const maxW = 1200;
     let w = img.naturalWidth;
     let h = img.naturalHeight;
@@ -8074,10 +8145,16 @@ async function processOcrImage(file) {
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, w, h);
 
-    // Lancer Tesseract OCR
+    if (loadText) loadText.textContent = 'Amélioration de l\'image...';
+    // Prétraiter l'image pour une meilleure OCR
+    preprocessImage(ctx, w, h);
+
+    if (loadText) loadText.textContent = 'Reconnaissance du texte...';
+
+    // Configurer Tesseract : détection de page automatique + fra+eng
     const result = await Tesseract.recognize(
       canvas,
-      'fra', // Français
+      'fra+eng',
       {
         logger: function(m) {
           if (m.status === 'recognizing text' && loadText) {
@@ -8099,6 +8176,7 @@ async function processOcrImage(file) {
 
   } catch(e) {
     if (loading) loading.style.display = 'none';
+    console.error('OCR error:', e);
     toast('Erreur OCR: ' + (e.message || ''), 'error');
   }
 }
