@@ -8051,10 +8051,10 @@ function captureScanOcr() {
 }
 
 /**
- * Prétraite l'image pour améliorer la reconnaissance Tesseract :
- * 1. Conversion en niveaux de gris
- * 2. Auto-levels : étire le contraste sur tout le spectre [0..255]
- * 3. Binarisation adaptative rapide (seuil par blocs précalculés)
+ * Prétraite l'image pour Tesseract :
+ * 1. Conversion en niveaux de gris (luminance)
+ * 2. Contraste léger par auto-levels (sans binarisation pour ne pas perdre d'info)
+ * 3. Agrandissement de la zone de texte (upscale 2x) pour que Tesseract voie mieux les petits caractères
  */
 function preprocessImage(ctx, w, h) {
   const imageData = ctx.getImageData(0, 0, w, h);
@@ -8067,55 +8067,17 @@ function preprocessImage(ctx, w, h) {
     data[i] = data[i + 1] = data[i + 2] = gray;
   }
 
-  // 2. Auto-levels : trouver min/max et étirer sur tout le spectre
+  // 2. Auto-levels modéré : étirer le contraste
   let gmin = 255, gmax = 0;
   for (let i = 0; i < len; i += 4) {
-    const g = data[i];
-    if (g < gmin) gmin = g;
-    if (g > gmax) gmax = g;
+    if (data[i] < gmin) gmin = data[i];
+    if (data[i] > gmax) gmax = data[i];
   }
   const range = gmax - gmin;
-  if (range > 15) {
+  if (range > 10 && range < 250) {
     for (let i = 0; i < len; i += 4) {
       const g = ((data[i] - gmin) / range) * 255;
       data[i] = data[i + 1] = data[i + 2] = Math.round(g);
-    }
-  }
-
-  // 3. Binarisation adaptative rapide (seuils par blocs 48×48)
-  const blockSize = 48;
-  const gridCols = Math.ceil(w / blockSize);
-  const gridRows = Math.ceil(h / blockSize);
-
-  // Précalculer la grille des seuils (une seule passe)
-  const thresholds = [];
-  for (let gy = 0; gy < gridRows; gy++) {
-    thresholds[gy] = [];
-    for (let gx = 0; gx < gridCols; gx++) {
-      let sum = 0, count = 0;
-      const startX = gx * blockSize;
-      const startY = gy * blockSize;
-      const endX = Math.min(startX + blockSize, w);
-      const endY = Math.min(startY + blockSize, h);
-      for (let py = startY; py < endY; py++) {
-        for (let px = startX; px < endX; px++) {
-          sum += data[(py * w + px) * 4];
-          count++;
-        }
-      }
-      thresholds[gy][gx] = count > 0 ? sum / count : 128;
-    }
-  }
-
-  // Appliquer le seuillage par lookup dans la grille
-  for (let y = 0; y < h; y++) {
-    const gy = Math.floor(y / blockSize);
-    for (let x = 0; x < w; x++) {
-      const gx = Math.floor(x / blockSize);
-      const threshold = thresholds[gy][gx] - 8;
-      const idx2 = (y * w + x) * 4;
-      const val = data[idx2] > threshold ? 255 : 0;
-      data[idx2] = data[idx2 + 1] = data[idx2 + 2] = val;
     }
   }
 
@@ -8146,20 +8108,31 @@ async function processOcrImage(file) {
     ctx.drawImage(img, 0, 0, w, h);
 
     if (loadText) loadText.textContent = 'Amélioration de l\'image...';
-    // Prétraiter l'image pour une meilleure OCR
+    // Prétraiter l'image (niveaux de gris + contraste seulement)
     preprocessImage(ctx, w, h);
 
     if (loadText) loadText.textContent = 'Reconnaissance du texte...';
 
-    // Configurer Tesseract : détection de page automatique + fra+eng
+    // Whitelist selon le champ :
+    // - lot : chiffres + lettres (maj/min) + séparateurs courants
+    // - DLC : seulement chiffres + / -
+    const field = document.getElementById('scanModal')?.dataset.field;
+    const whitelist = field === 'dlc'
+      ? '0123456789/-'
+      : '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/-.';
+
     const result = await Tesseract.recognize(
       canvas,
-      'fra+eng',
+      'eng',
       {
         logger: function(m) {
           if (m.status === 'recognizing text' && loadText) {
             loadText.textContent = 'Reconnaissance... ' + Math.round(m.progress * 100) + '%';
           }
+        },
+        config: {
+          'tessedit_pageseg_mode': '7',   // ligne unique de texte
+          'tessedit_char_whitelist': whitelist  // forcer les caractères valides
         }
       }
     );
