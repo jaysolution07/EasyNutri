@@ -2579,11 +2579,98 @@ function renderProductionTrace() {
       <div class="trace-result-meta" style="margin-top:8px">${ingredients}</div>
       <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
         <button class="btn btn-secondary btn-sm" onclick="openProductionFromHistory('${escHtml(p.id_production)}')">Refaire etiquette</button>
-        <button class="btn btn-primary btn-sm" onclick="openProductionFromHistory('${escHtml(p.id_production)}');setTimeout(()=>prodExport(),100)">📄 Télécharger PDF</button>
+        <button class="btn btn-primary btn-sm" onclick="downloadProductionPdf('${escHtml(p.id_production)}')">📄 Télécharger PDF</button>
       </div>
     </div>`;
   }).join('');
 }
+async function downloadProductionPdf(productionId) {
+  const rows = PRODUCTIONS.filter(p => String(p.id_production || '') === String(productionId || ''));
+  if (!rows.length) { toast('Production introuvable', 'error'); return; }
+  const first = rows[0];
+  const recette = RECETTES.find(r => String(r.nom || '').trim().toLowerCase() === String(first.recette || '').trim().toLowerCase());
+  if (!recette) { toast('Recette introuvable', 'error'); return; }
+
+  // Charger les ingrédients de la recette (RECETTES n'a que les métadonnées)
+  try {
+    const resp = await fetch(API + '?action=recette&id=' + encodeURIComponent(String(recette.id)));
+    if (resp.ok) recette.ingredients = await resp.json();
+    else recette.ingredients = [];
+  } catch (e) {
+    recette.ingredients = [];
+  }
+
+  // Sauvegarder l'état actuel
+  const savedPROD = PROD;
+  const savedRECETTE = RECETTE;
+
+  // Configurer PROD et RECETTE pour le PDF
+  RECETTE = recette;
+  PROD = {
+    lotRecette: first.lot_recette || '',
+    poidsNet: first.poids_net || '',
+    poidsProduit: first.poids_recette_produite || first.poids_recette_base || '',
+    dateType: first.dlc_ddm_type || 'DLC',
+    dateLimite: first.dlc_ddm || '',
+    mentions: first.mentions || '',
+    formats: parseFormatExportList(first.format_export),
+    historyMode: true,
+    format: 'pdf',
+    nbEtiquettes: first.nb_etiquettes || '1',
+    contenants: parseHistoricContenants(first.contenants_json),
+    lotsIng: {},
+    dateIng: {},
+    stockLots: {},
+    lotAllocations: []
+  };
+
+  // Reconstruire les lots avec les prix
+  rows.forEach(row => {
+    if (row.ingredient_id) {
+      PROD.lotsIng[row.ingredient_id] = row.lot_ingredient || '';
+      PROD.dateIng[row.ingredient_id] = row.dlc_ddm_ingredient || '';
+      PROD.lotAllocations.push({
+        ingId: row.ingredient_id,
+        ingNom: row.ingredient || '',
+        lot: row.lot_ingredient || '',
+        dlc: row.dlc_ddm_ingredient || '',
+        qty: parseFloat(String(row.poids_ingredient || '0').replace(',', '.')) || 0,
+        stockQty: parseFloat(String(row.poids_ingredient || '0').replace(',', '.')) || 0,
+        stockUnite: 'g',
+        unite: 'g',
+        prix_unitaire: row.prix_unitaire || '',
+        cout_ligne: row.cout_ligne || ''
+      });
+    }
+  });
+
+  // S'assurer que l'input nom existe pour prodExportPdf
+  let nomInput = document.getElementById('nom');
+  let nomInputCreated = false;
+  if (!nomInput) {
+    nomInput = document.createElement('input');
+    nomInput.id = 'nom';
+    nomInput.type = 'hidden';
+    nomInput.value = first.recette || '';
+    document.body.appendChild(nomInput);
+    nomInputCreated = true;
+  }
+  const savedNom = nomInput.value;
+  nomInput.value = first.recette || '';
+
+  try {
+    await prodExportPdf(false); // closeAfter=false, la modale n'est pas ouverte
+  } catch(e) {
+    toast('Erreur PDF: ' + (e.message || 'Erreur'), 'error');
+    console.error('downloadProductionPdf error:', e);
+  } finally {
+    nomInput.value = savedNom;
+    if (nomInputCreated) nomInput.remove();
+    PROD = savedPROD;
+    RECETTE = savedRECETTE;
+  }
+}
+
 function csvEscape(v) {
   const s = String(v ?? '');
   return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
