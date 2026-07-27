@@ -3484,7 +3484,8 @@ async function deleteIngredient() {
 let PROD = {
   lotRecette: '', poidsNet: '', poidsProduit: '', dateType: 'DLC', dateLimite: '',
   mentions: '', lotsIng: {}, dateIng: {}, stockLots: {}, lotAllocations: [],
-  contenants: [], nbEtiquettes: '1', formats: ['pdf'], historyMode: false, format: 'pdf'
+  contenants: [], nbEtiquettes: '1', formats: ['pdf'], historyMode: false, format: 'pdf',
+  _manualLotModes: {}
 };
 
 function parseDecimalInput(value) {
@@ -3719,6 +3720,7 @@ async function openModalProduction() {
     } catch(e) { /* stock non disponible */ }
   }
 
+  PROD._stockLotsMap = stockLotsMap; // Stocker pour le recalcul FIFO
   PROD.lotAllocations = []; // Réinitialiser avant le rendu
   RECETTE.ingredients.forEach(row => {
     const ing = ING.find(x => x.id == row.ingredient);
@@ -3783,7 +3785,7 @@ async function openModalProduction() {
               data-lot="${escHtml(a.lot)}" data-dlc="${escHtml(a.dlc || '')}"
               data-stock-unite="${escHtml(a.stockUnite || 'g')}"
               data-prix-unitaire="${escHtml(String(a.prix_unitaire || ''))}"
-              value="${a.qty}" max="${a.maxQty}"
+              value="${formatWeightG(a.qty,1)}" max="${a.maxQty}"
               style="width:90px;font-size:12px;padding:4px 6px;text-align:right"
               onchange="onLotQtyChange(this, '${ing.id}', ${fqty})">
             <span style="font-size:10px;color:var(--text3);white-space:nowrap">/ ${a.maxQty} ${a.unite}</span>
@@ -3818,7 +3820,8 @@ async function openModalProduction() {
         <div style="display:flex;align-items:center;flex-wrap:wrap">
           <div class="prod-lot-name" title="${escHtml(ing.nom)}">${escHtml(ing.nom)}</div>
           ${quidHtml}
-          <span style="font-size:10px;color:var(--text3);margin-left:6px">(${fqty} g)</span>
+          <button class="btn btn-sm btn-secondary lot-mode-btn" onclick="toggleIngLotMode('${ing.id}')" style="font-size:10px;padding:2px 6px">🤖 Auto</button>
+          <span style="font-size:10px;color:var(--text3)">(${fqty} g)</span>
         </div>
         ${subsHtml}
         <div class="stock-lot-allocations" data-ing-id="${ing.id}">
@@ -3917,7 +3920,10 @@ function refreshLotSelect(selectEl, ing, stockLotsMap) {
   }
 }
 
-function onLotQtyChange(inputEl, ingId, neededQty) {
+function onLotQtyChange(inputEl, ingId, _staleNeededQty) {
+  // Derive le besoin actuel depuis la recette (pas fiable de passer en dur au render)
+  const ingRow = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+  const neededQty = ingRow ? (parseFloat(ingRow.poids) || 0) * getProductionScaleRatio() : (_staleNeededQty || 0);
   // Collecte les quantités de tous les lots alloués pour cet ingrédient
   const qties = document.querySelectorAll(`.stock-lot-qty[data-ing-id="${ingId}"]`);
   let totalAlloue = 0;
@@ -3960,6 +3966,213 @@ function onLotQtyChange(inputEl, ingId, neededQty) {
         : `<span style="color:var(--danger);font-weight:700">⚠️ ${formatWeightG(totalAlloue,1)} / ${formatWeightG(neededQty,1)} g (manque ${formatWeightG(neededQty - totalAlloue,1)} g)</span>`;
     }
   }
+}
+
+
+
+function onProdPoidsChange() {
+  const newWeight = parseDecimalInput(document.getElementById('prodPoidsProduit').value);
+  if (!newWeight || newWeight <= 0) return;
+  PROD.poidsProduit = String(newWeight);
+  const newRatio = getProductionScaleRatio();
+
+  const seen = new Set();
+  document.querySelectorAll('#prodLotsIngredients .prod-lot-row').forEach(row => {
+    const allocDiv = row.querySelector('.stock-lot-allocations');
+    if (!allocDiv) return;
+    const ingId = allocDiv.dataset.ingId;
+    if (seen.has(ingId)) return;
+    seen.add(ingId);
+
+    const ing = ING.find(x => x.id == ingId);
+    if (!ing) return;
+
+    const ir = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+    const newNeeded = ir ? (parseFloat(ir.poids) || 0) * newRatio : 0;
+
+    // Update (X g) display
+    const qtyDisplay = row.querySelector('[style*="font-size:10px;color:var(--text3)"]');
+    if (qtyDisplay && qtyDisplay.textContent.includes('g')) {
+      qtyDisplay.textContent = '(' + formatWeightG(newNeeded,1) + ' g)';
+    }
+
+    if ((PROD._manualLotModes || {})[ingId]) {
+      // Manuel: update statut + sync allocations from DOM
+      const statutEl = allocDiv.querySelector('[data-statut]');
+      if (statutEl) {
+        let total = 0;
+        allocDiv.querySelectorAll('.stock-lot-qty').forEach(inp => { total += parseFloat(inp.value) || 0; });
+        statutEl.textContent = total >= newNeeded
+          ? '✅ ' + formatWeightG(total,1) + ' / ' + formatWeightG(newNeeded,1) + ' g'
+          : '⚠️ ' + formatWeightG(total,1) + ' / ' + formatWeightG(newNeeded,1) + ' g (manque ' + formatWeightG(newNeeded - total,1) + ' g)';
+      }
+      rebuildManualAllocations(ingId);
+    } else {
+      // Auto: re-run FIFO
+      renderIngLotBlock(ingId);
+    }
+  });
+}
+
+
+
+function toggleIngLotMode(ingId) {
+  if (!PROD._manualLotModes) PROD._manualLotModes = {};
+  const isManual = PROD._manualLotModes[ingId];
+  if (isManual) {
+    delete PROD._manualLotModes[ingId];
+    const ing = ING.find(x => x.id == ingId);
+    if (ing && PROD._stockLotsMap) {
+      const ingRow = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+      const nq = ingRow ? (parseFloat(ingRow.poids) || 0) * getProductionScaleRatio() : 0;
+      const { allocations } = autoAllocateLotsFIFO(ing, nq, PROD._stockLotsMap);
+      PROD.lotAllocations = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId)
+        .concat(allocations.map(a => ({
+          ingId: a.ingId, ingNom: a.ingNom, stockId: a.stockId,
+          lot: a.lot, dlc: a.dlc, qty: a.qty,
+          stockQty: a.stockQty, stockUnite: a.stockUnite,
+          prix_unitaire: a.prix_unitaire || ''
+        })));
+    }
+  } else {
+    PROD._manualLotModes[ingId] = true;
+    PROD.lotAllocations = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId);
+  }
+  renderIngLotBlock(ingId);
+}
+
+function renderIngLotBlock(ingId) {
+  const allocDiv = document.querySelector('.stock-lot-allocations[data-ing-id="' + ingId + '"]');
+  if (!allocDiv) return;
+  const row = allocDiv.closest('.prod-lot-row');
+  if (!row) return;
+  const ing = ING.find(x => x.id == ingId);
+  if (!ing) return;
+  const map = (PROD._stockLotsMap || {});
+  const key = String(ing.nom || '').trim().toLowerCase();
+  const lots = (map[key] || []).filter(s => s.quantite > 0);
+  const isManual = !!(PROD._manualLotModes || {})[ingId];
+  const ir = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+  const needed = ir ? (parseFloat(ir.poids) || 0) * getProductionScaleRatio() : 0;
+
+  if (isManual && lots.length) {
+    const ms = (PROD._manualSelections || {})[ingId] || [];
+    let total = 0, h = '';
+    lots.forEach(s => {
+      const ex = ms.find(m => String(m.stockId) === String(s.id_stock));
+      const sq = ex ? ex.qty : 0;
+      total += sq;
+      const sid = escHtml(s.id_stock);
+      h += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0">' +
+        '<input type="checkbox" ' + (sq > 0 ? 'checked' : '') +
+          ' onchange="toggleManualLot(&quot;' + ingId + '&quot;,&quot;' + sid + '&quot;,this.checked)" style="flex-shrink:0">' +
+        '<span style="font-size:11px;white-space:nowrap;flex:1;overflow:hidden;text-overflow:ellipsis">' + escHtml(s.lot) + '</span>' +
+        '<span style="font-size:10px;color:var(--text3);flex-shrink:0">DLC: ' + (s.dlc_ddm || '-') + '</span>' +
+        '<input class="form-input stock-lot-qty" type="number" step="any"' +
+          ' data-ing-id="' + ingId + '" data-stock-id="' + sid + '"' +
+          ' data-lot="' + escHtml(s.lot) + '" data-dlc="' + escHtml(s.dlc_ddm || '') + '"' +
+          ' data-stock-unite="' + escHtml(s.unite || 'g') + '"' +
+          ' data-prix-unitaire="' + escHtml(String(s.prix_unitaire || '')) + '"' +
+          ' value="' + formatWeightG(sq,1) + '" max="' + s.quantite + '"' +
+          ' style="width:80px;font-size:12px;padding:4px 6px;text-align:right"' +
+          ' onchange="onManualLotQtyChange(this,&quot;' + ingId + '&quot;)">' +
+        '<span style="font-size:10px;color:var(--text3);white-space:nowrap">/ ' + s.quantite + ' ' + s.unite + '</span>' +
+        '</div>';
+    });
+    const label = total >= needed ? '✅ ' + formatWeightG(total,1) + ' / ' + formatWeightG(needed,1) + ' g' : '⚠️ ' + formatWeightG(total,1) + ' / ' + formatWeightG(needed,1) + ' g';
+    h += '<div style="font-size:11px;margin-top:6px;padding-top:4px;border-top:1px solid var(--border)">Total : <span data-statut>' + label + '</span></div>';
+    allocDiv.innerHTML = h;
+  } else {
+    const { allocations, manque } = autoAllocateLotsFIFO(ing, needed, map);
+    let h = '', total = 0;
+    allocations.forEach((a, i) => {
+      total += a.qty;
+      h += '<div style="display:flex;align-items:center;gap:6px;margin-top:' + (i>0?'4px':'0') + '">' +
+        '<span style="font-size:11px;white-space:nowrap">' + escHtml(a.lot) + '</span>' +
+        '<span style="font-size:10px;color:var(--text3)">DLC: ' + (a.dlc || '-') + '</span>' +
+        '<input class="form-input stock-lot-qty" type="number" step="any"' +
+        ' data-ing-id="' + ingId + '" data-stock-id="' + escHtml(a.stockId) + '"' +
+        ' data-lot="' + escHtml(a.lot) + '" data-dlc="' + escHtml(a.dlc || '') + '"' +
+        ' data-stock-unite="' + escHtml(a.stockUnite || 'g') + '"' +
+        ' value="' + formatWeightG(a.qty,1) + '" max="' + a.maxQty + '"' +
+        ' style="width:90px;font-size:12px;padding:4px 6px;text-align:right"' +
+        ' onchange="onLotQtyChange(this,&quot;' + ingId + '&quot;,' + formatWeightG(needed,1) + ')">' +
+        '<span style="font-size:10px;color:var(--text3);white-space:nowrap">/ ' + a.maxQty + ' ' + a.unite + '</span>' +
+        '</div>';
+    });
+    if (allocations.length) {
+      const label = total >= needed ? '✅ ' + formatWeightG(total,1) + ' / ' + formatWeightG(needed,1) + ' g' : '⚠️ ' + formatWeightG(total,1) + ' / ' + formatWeightG(needed,1) + ' g (manque ' + formatWeightG(manque,1) + ' g)';
+      h += '<div style="font-size:11px;margin-top:6px;padding-top:4px;border-top:1px solid var(--border)">Total : <span data-statut>' + label + '</span></div>';
+      PROD.lotAllocations = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId)
+        .concat(allocations.map(a => ({
+          ingId: a.ingId, ingNom: a.ingNom, stockId: a.stockId,
+          lot: a.lot, dlc: a.dlc, qty: a.qty,
+          stockQty: a.stockQty, stockUnite: a.stockUnite,
+          prix_unitaire: a.prix_unitaire || ''
+        })));
+    } else {
+      h = '<div style="font-size:11px;color:var(--text3);padding:4px 0">Aucun lot disponible</div>';
+    }
+    allocDiv.innerHTML = h;
+  }
+  const btn = row.querySelector('.lot-mode-btn');
+  if (btn) {
+    btn.textContent = isManual ? '✋ Manu' : '🤖 Auto';
+    btn.className = 'btn btn-sm ' + (isManual ? 'btn-danger' : 'btn-secondary') + ' lot-mode-btn';
+  }
+}
+
+function toggleManualLot(ingId, stockId, checked) {
+  if (!PROD._manualSelections) PROD._manualSelections = {};
+  if (!PROD._manualSelections[ingId]) PROD._manualSelections[ingId] = [];
+  if (checked) {
+    const ing = ING.find(x => x.id == ingId);
+    if (ing) {
+      const map = PROD._stockLotsMap || {};
+      const key = String(ing.nom || '').trim().toLowerCase();
+      const s = (map[key] || []).find(x => String(x.id_stock) === String(stockId));
+      if (s && !PROD._manualSelections[ingId].find(m => String(m.stockId) === String(stockId))) {
+        const ir = RECETTE.ingredients.find(r => String(r.ingredient) === String(ingId));
+        const need = ir ? (parseFloat(ir.poids) || 0) * getProductionScaleRatio() : 0;
+        const qty = Math.min(stockQtyToGrams(s.quantite, s.unite), need || 100);
+        PROD._manualSelections[ingId].push({
+          ingId, stockId, lot: s.lot, dlc: s.dlc_ddm || '', qty,
+          stockQty: gramsToStockQty(qty, s.unite),
+          stockUnite: s.unite || 'g'
+        });
+      }
+    }
+  } else {
+    PROD._manualSelections[ingId] = PROD._manualSelections[ingId].filter(m => String(m.stockId) !== String(stockId));
+  }
+  rebuildManualAllocations(ingId);
+  renderIngLotBlock(ingId);
+}
+
+function onManualLotQtyChange(inputEl, ingId) {
+  rebuildManualAllocations(ingId);
+  renderIngLotBlock(ingId);
+}
+
+function rebuildManualAllocations(ingId) {
+  if (!PROD._manualSelections || !PROD._manualSelections[ingId]) return;
+  const inputs = document.querySelectorAll('.stock-lot-qty[data-ing-id="' + ingId + '"]');
+  const selections = [];
+  inputs.forEach(inp => {
+    const qty = parseFloat(inp.value) || 0;
+    if (qty <= 0) return;
+    selections.push({
+      ingId, ingNom: (ING.find(x => x.id == ingId) || {}).nom || '',
+      stockId: inp.dataset.stockId || '', lot: inp.dataset.lot || '',
+      dlc: inp.dataset.dlc || '', qty,
+      stockQty: gramsToStockQty(qty, inp.dataset.stockUnite || 'g'),
+      stockUnite: inp.dataset.stockUnite || 'g',
+      prix_unitaire: parseFloat(String(inp.dataset.prixUnitaire || '0').replace(',', '.')) || 0
+    });
+  });
+  PROD._manualSelections[ingId] = selections;
+  const currentAuto = (PROD.lotAllocations || []).filter(a => a.ingId !== ingId);
+  PROD.lotAllocations = currentAuto.concat(selections);
 }
 
 function prodGoStep(n) {
@@ -8007,7 +8220,7 @@ function exportDashboardCsv() {
         </div>
         <div class="form-group">
           <label class="form-label">Poids total produit (g) *</label>
-          <input class="form-input" id="prodPoidsProduit" type="text" inputmode="decimal" placeholder="Ex: 5000">
+          <input class="form-input" id="prodPoidsProduit" type="text" inputmode="decimal" placeholder="Ex: 5000" oninput="onProdPoidsChange()">
         </div>
         <div class="form-group">
           <label class="form-label">Nombre d'étiquettes</label>
