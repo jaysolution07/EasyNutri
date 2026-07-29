@@ -379,6 +379,9 @@
   /* ── MOBILE ≤ 768px ── */
   @media (max-width: 768px) {
 
+    /* ── Empêcher tout overflow horizontal ── */
+    .main { overflow-x: hidden; }
+
     /* Header mobile : burger | logo centré | status */
     .header { padding: 0 14px; height: 56px; gap: 0; }
     /* Logo centré : margin auto de chaque côté du groupe logo */
@@ -1159,6 +1162,12 @@
           <div class="home-card-icon">📦</div>
           <div class="home-card-title">Stock</div>
           <div class="home-card-desc">Suivez vos stocks, lots, DLC et gérez les inventaires</div>
+          <div class="home-card-arrow">→</div>
+        </div>
+        <div class="home-card" id="home-card-dashboard" onclick="showPage('tableaudebord')">
+          <div class="home-card-icon">📈</div>
+          <div class="home-card-title">Tableau de Bord</div>
+          <div class="home-card-desc">Visualisez l'évolution des prix ingrédients et coûts des recettes</div>
           <div class="home-card-arrow">→</div>
         </div>
         <div class="home-card" id="home-card-production" onclick="showPage('production')">
@@ -7310,7 +7319,10 @@ function initStockPage() {
     // La visibilité est gérée par showPage() — on laisse le style par défaut (visible)
     div.innerHTML = `
       <div class="page-header">
-        <div class="page-title"><span>📦</span> Gestion des Stocks</div>
+        <div>
+          <button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+          <div class="page-title"><span>📦</span> Gestion des Stocks</div>
+        </div>
       </div>
       <div class="stock-alert-bar" id="stockStatCards">
         <div class="stat-card"><div class="stat-num">—</div><div class="stat-label">Produits</div></div>
@@ -7697,7 +7709,10 @@ function initDashboardPage() {
     div.id = 'pageTableaudebord';
     div.innerHTML = `
       <div class="page-header">
-        <div class="page-title"><span>📈</span> Tableau de Bord</div>
+        <div>
+          <button class="btn-back-home" onclick="showPage('accueil')" title="Retour à l'accueil">← Accueil</button>
+          <div class="page-title"><span>📈</span> Tableau de Bord</div>
+        </div>
       </div>
 
       <div class="card mb-3">
