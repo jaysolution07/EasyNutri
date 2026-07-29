@@ -425,7 +425,7 @@
     .card { border-radius: 14px; }
     .card-header { padding: 13px 16px 11px; flex-direction: column; align-items: stretch; gap: 10px; }
     .card-header > .card-title { margin-bottom: 0; }
-    .card-header .flex { width: 100%; gap: 8px; }
+    .card-header .flex { width: 100%; gap: 8px; flex-wrap: wrap; }
     .card-header .flex .form-select { flex: 1; }
     .card-header .flex .search-wrap { flex: 1; }
     .card-header .flex .search-wrap input { width: 100%; }
@@ -463,7 +463,7 @@
     }
 
     /* Ingredient editor rows */
-    .ing-row { grid-template-columns: 1fr 76px auto; gap: 7px; }
+    .ing-row { grid-template-columns: 1fr 76px auto 28px; gap: 7px; }
 
     /* Nutri cards */
     .nutri-cards { grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
@@ -563,7 +563,7 @@
     .nutri-card .val { font-size: 15px; }
     .modal { padding: 18px 14px 28px; }
     #allergenesCheckboxes { grid-template-columns: 1fr 1fr; }
-    .ing-row { grid-template-columns: 1fr 68px auto; }
+    .ing-row { grid-template-columns: 1fr 68px auto 28px; }
     #fab { width: 52px; height: 52px; font-size: 25px; }
     #decisionGrid {
       grid-template-columns: 1fr !important;
@@ -1198,8 +1198,8 @@
           <div class="card-header">
             <div class="card-title">Liste</div>
             <div class="flex gap-2 items-center">
-              <select class="form-select" id="filterCatSelect" onchange="filterByCategorie(this.value)" style="font-size:12px;padding:6px 10px;width:130px"><option value="">Toutes catégories</option></select>
-              <div class="search-wrap" style="width:140px">
+              <select class="form-select" id="filterCatSelect" onchange="filterByCategorie(this.value)" style="font-size:12px;padding:6px 10px"><option value="">Toutes catégories</option></select>
+              <div class="search-wrap">
                 <input class="form-input" id="searchRecette" placeholder="Rechercher..." style="padding:7px 10px 7px 34px;font-size:12px;" oninput="filterRecettes()">
               </div>
             </div>
