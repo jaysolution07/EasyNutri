@@ -12,7 +12,8 @@
 <meta name="theme-color" content="#1f8c88">
 <meta name="mobile-web-app-capable" content="yes">
 <title>EasyNutri</title>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js" defer></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1873,37 +1874,64 @@ function btnLoading(btn, loading) {
   else { btn.classList.remove('loading'); btn.innerHTML = btn.dataset.label || btn.innerHTML; btn.disabled = false; }
 }
 
-// ── INIT ──
+// ── INIT (optimisé : tous les appels API en parallèle) ──
 async function init() {
-  if (!API) return; // pas de session → rester sur la page login
+  if (!API) return;
   document.getElementById('splash').classList.remove('hidden');
-  splashProgress(10, 'Connexion en cours…');
+  splashProgress(5, 'Connexion…');
   showSkeletonRecettes(); showSkeletonIngredients();
   try {
-    splashProgress(25, 'Chargement des ingrédients…');
-    const r = await fetch(API + '?action=ingredients');
-    ING = await r.json();
+    // ⚡ Étape 1 : TOUS les appels API en parallèle (ingrédients, fournisseurs, catégories, recettes, etc.)
+    splashProgress(10, 'Chargement des données…');
+    const [ingData, fournData, allergData, catData, ressData, recettesResponse] = await Promise.all([
+      fetch(API + '?action=ingredients').then(r => r.json()).catch(() => []),
+      fetch(API + '?action=fournisseurs').then(r => r.json()).catch(() => []),
+      fetch(API + '?action=allergenes').then(r => r.json()).catch(() => []),
+      fetch(API + '?action=categories').then(r => r.json()).catch(() => []),
+      fetch(API + '?action=getResourceData').then(r => r.json()).catch(() => ({humain:[],energie:[],emballages:[]})),
+      fetch(API + '?action=recettes').then(r => r.json()).catch(() => [])
+    ]);
+
+    ING = Array.isArray(ingData) ? ingData : [];
     ingredientsFiltered = [...ING];
     ING.forEach(ing => { if (ing.type === 'compose' && ing.sous_ingredients?.length) RECETTE_SUBS[ing.id] = ing.sous_ingredients; });
 
-    splashProgress(45, 'Chargement des données…');
-    try {
-      const [rf, ra] = await Promise.all([fetch(API + '?action=fournisseurs'), fetch(API + '?action=allergenes')]);
-      window.FOURNISSEURS = await rf.json();
-      window.ALLERGENES   = await ra.json();
-      FOURN = [...window.FOURNISSEURS];
-      fournFiltered = [...FOURN];
-    } catch(e) { window.FOURNISSEURS = []; window.ALLERGENES = []; }
+    window.FOURNISSEURS = Array.isArray(fournData) ? fournData : [];
+    window.ALLERGENES   = Array.isArray(allergData) ? allergData : [];
+    FOURN = [...window.FOURNISSEURS];
+    fournFiltered = [...FOURN];
 
-    splashProgress(65, 'Chargement des catégories…');
-    await loadCategories();   // ← charge depuis le Sheets
+    CATEGORIES_DATA = Array.isArray(catData) ? catData : [];
+    CATEGORIES = [...new Set(CATEGORIES_DATA.map(c => c.nom).filter(Boolean))].sort();
 
-    splashProgress(80, 'Chargement des recettes…');
-    renderIngredientsList(); renderFournisseursList();await      loadRessources();
-    await loadRecettes();
-    if (hasModuleAccess('reception')) await loadReceptions();
-    if (hasModuleAccess('production')) await loadProductions();
-    if (hasModuleAccess('stock')) await loadStock();
+    RESSOURCES = ressData;
+
+    // ⚡ Étape 2 : Rendu des interfaces + modules
+    splashProgress(35, 'Préparation des interfaces…');
+    renderIngredientsList();
+    renderFournisseursList();
+
+    if (Array.isArray(recettesResponse)) {
+      RECETTES = recettesResponse;
+      recettesFiltered = [...RECETTES];
+      RECETTES.forEach(rec => { if (rec.categorie && !CATEGORIES.includes(rec.categorie)) CATEGORIES.push(rec.categorie); });
+      CATEGORIES.sort();
+      renderRecettesList();
+      refreshCategorieSelects();
+      refreshPlanningRecipeSelect();
+      refreshProductionRecipeSelect();
+      const el = document.getElementById('recetteCount');
+      if (el) el.textContent = RECETTES.length + ' recette' + (RECETTES.length > 1 ? 's' : '');
+    } else {
+      RECETTES = []; recettesFiltered = [];
+    }
+
+    splashProgress(60, 'Chargement des modules…');
+    const modulePromises = [];
+    if (hasModuleAccess('reception')) modulePromises.push(loadReceptions());
+    if (hasModuleAccess('production')) modulePromises.push(loadProductions());
+    if (hasModuleAccess('stock')) modulePromises.push(loadStock());
+    await Promise.all(modulePromises);
 
   splashProgress(100, 'Prêt !');
     document.getElementById('statusDot').className = 'badge badge-green';
