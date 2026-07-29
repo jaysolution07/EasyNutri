@@ -5991,9 +5991,25 @@ async function loadDecisionRecette() {
   try {
     const r = await fetch(API + '?action=recette&id=' + id);
     const rawIng = await r.json();
-    // Stocker pour calcul
     window._decisionIng = rawIng;
   } catch(e) { window._decisionIng = []; }
+
+  // Charger les lots disponibles pour choisir le prix au plus juste
+  window._decisionStockMap = {};
+  window._decisionLotSelections = {};
+  if (typeof getAbonnement === 'function' && getAbonnement() >= 3) {
+    try {
+      const lots = await apiGet('lotsDisponibles');
+      if (Array.isArray(lots)) {
+        window._decisionStockMap = lots.reduce((acc, s) => {
+          const key = String(s.produit || '').trim().toLowerCase();
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(s);
+          return acc;
+        }, {});
+      }
+    } catch(e) { /* stock non disponible */ }
+  }
 
   decisionHumainRows  = [];
   decisionEnergieRows = [];
@@ -6087,15 +6103,34 @@ function calcDecision() {
   // 1. Coût matière
   let coutMatiere = 0;
   const matiereLines = [];
+  const sel = window._decisionLotSelections || {};
+  const stockMap = window._decisionStockMap || {};
+
   (window._decisionIng || []).forEach(row => {
     const ing = ING.find(x => x.id == row.ingredient); if (!ing) return;
     const p = parseFloat(row.poids) || 0;
-    const prixKg = parseFloat(ing.prix_kg) || 0;
+
+    // Voir si un lot est sélectionné pour cet ingrédient
+    const selLot = sel[ing.id];
+    let prixKg = 0;
+    if (selLot) {
+      prixKg = parseFloat(selLot.prix_unitaire) || 0;
+    }
+    // Fallback : prix standard de l'ingrédient si pas de lot ou prix lot à 0
+    if (!prixKg) {
+      prixKg = parseFloat(ing.prix_kg) || 0;
+    }
+
     if (prixKg > 0) {
       const eq = ing.unite === 'L' ? (parseFloat(ing.equiv_poids_g) || 1000) : 1000;
       const ligneCout = (p / eq) * prixKg;
       coutMatiere += ligneCout;
-      matiereLines.push({ nom: ing.nom, poids: p, cout: ligneCout });
+      matiereLines.push({
+        nom: ing.nom, poids: p, cout: ligneCout,
+        lot: selLot ? selLot.lot : null,
+        dlc: selLot ? selLot.dlc : null,
+        prix_unitaire: selLot ? parseFloat(selLot.prix_unitaire) || 0 : 0
+      });
     }
   });
   // Ajustement selon quantité produite vs poids recette
@@ -6103,27 +6138,27 @@ function calcDecision() {
   const ratio = poidsRecette > 0 ? qte / poidsRecette : 1;
   coutMatiere *= ratio;
 
-  // 2. Coût humain
+  // 2. Coût humain — inchangé
   let coutHumain = 0;
   decisionHumainRows.forEach(row => {
     const ress = RESSOURCES.humain.find(h => h.id === row.ressId);
     if (ress) coutHumain += (row.nb || 1) * (row.heures || 0) * ress.cout;
   });
 
-  // 3. Coût énergie
+  // 3. Coût énergie — inchangé
   let coutEnergie = 0;
   decisionEnergieRows.forEach(row => {
     const ress = RESSOURCES.energie.find(e => e.id === row.ressId);
     if (ress) coutEnergie += (row.heures || 0) * ress.cout;
   });
 
-// 4. Emballage
+  // 4. Emballage — inchangé
   let coutEmballage = 0;
   document.querySelectorAll('.decision-emballage-row').forEach(row => {
-    const sel = row.querySelector('select');
+    const sel2 = row.querySelector('select');
     const qty = parseFloat(row.querySelector('input').value) || 1;
-    if (sel && sel.value) {
-      const opt = sel.options[sel.selectedIndex];
+    if (sel2 && sel2.value) {
+      const opt = sel2.options[sel2.selectedIndex];
       coutEmballage += (parseFloat(opt.dataset.cout) || 0) * qty;
     }
   });
@@ -6154,25 +6189,94 @@ function calcDecision() {
   document.getElementById('prixVenteParKg').textContent = qte > 0 ? prixVenteParKg.toFixed(2) : '—';
   document.getElementById('prixVenteParPortion').textContent = qte > 0 ? prixVenteParPortion.toFixed(2) : '—';
 
-  // Détail matière
+  // Détail matière avec sélection de lots
   const detEl = document.getElementById('decisionMatiereDetail');
-  if (matiereLines.length) {
-    detEl.innerHTML = matiereLines.map(l =>
-      `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
-        <span>${escHtml(l.nom)} (${l.poids}g)</span>
-        <span style="font-weight:600;color:var(--g3)">${(l.cout * ratio).toFixed(2)} €</span>
-      </div>`).join('');
-  } else {
-    detEl.innerHTML = '<div style="color:var(--text3);font-size:12px">Aucun ingrédient avec prix renseigné</div>';
-  }
+  const hasStock = typeof getAbonnement === 'function' && getAbonnement() >= 3;
+  let totalIngHtml = '';
+  (window._decisionIng || []).forEach(row => {
+    const ing = ING.find(x => x.id == row.ingredient); if (!ing) return;
+    const p = parseFloat(row.poids) || 0;
+    const key = String(ing.nom || '').trim().toLowerCase();
+    const lots = stockMap[key] || [];
+    const selLot = sel[ing.id];
+    const pkStd = parseFloat(ing.prix_kg) || 0;
+    const eq = ing.unite === 'L' ? (parseFloat(ing.equiv_poids_g) || 1000) : 1000;
+
+    if (!pkStd && !lots.length) return;
+
+    const ligneCout = (() => {
+      if (selLot) { const pu = parseFloat(selLot.prix_unitaire) || 0; return pu > 0 ? (p / eq) * pu : (pkStd > 0 ? (p / eq) * pkStd : 0); }
+      return pkStd > 0 ? (p / eq) * pkStd : 0;
+    })();
+
+    totalIngHtml += `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span><strong>${escHtml(ing.nom)}</strong> (${p}g)</span>
+        <span style="font-weight:600;color:var(--g3)">${(ligneCout * ratio).toFixed(2)} €</span>
+      </div>`;
+
+    // Lot selector
+    if (hasStock && lots.length) {
+      totalIngHtml += `<div style="margin-top:4px;display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;color:var(--text3);white-space:nowrap">Lot :</span>
+        <select style="flex:1;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);cursor:pointer"
+          onchange="onDecisionLotChange('${ing.id}', this.value)">
+          <option value="" ${selLot ? '' : 'selected'}>
+            ${pkStd > 0 ? 'Standard ('+pkStd.toFixed(2)+' €/kg)' : 'Standard (aucun prix)'}
+          </option>
+          ${lots.map(s => {
+            const pu = parseFloat(String(s.prix_unitaire || '0').replace(',', '.')) || 0;
+            const selStockId = selLot ? selLot.stockId : null;
+            return `<option value="${s.id_stock}" ${String(s.id_stock) === String(selStockId) ? 'selected' : ''}>
+              ${escHtml(s.lot || 'S/L')} — ${escHtml(s.dlc_ddm || 'S/DLC')} — ${pu.toFixed(2)} €/kg (${s.quantite} ${s.unite})
+            </option>`;
+          }).join('')}
+        </select>
+      </div>`;
+    }
+    if (selLot) {
+      totalIngHtml += `<div style="font-size:10px;color:var(--text3);margin-top:2px">Lot : ${escHtml(selLot.lot || '—')} — DLC : ${escHtml(selLot.dlc || '—')}</div>`;
+    }
+    totalIngHtml += '</div>';
+  });
+
+  detEl.innerHTML = totalIngHtml || '<div style="color:var(--text3);font-size:12px">Aucun ingrédient avec prix renseigné</div>';
 
   // Stocker pour PDF
   window._decisionResult = {
     coutMatiere, coutHumain, coutEnergie, coutEmballage,
     total, qte, ratio, portion, marge, prixVenteTotal,
     coutParKg, coutParPortion, prixVenteParKg, prixVenteParPortion,
-    matiereLines
+    matiereLines,
+    // Ajouter les infos lots pour le PDF
+    decisionLotSelections: window._decisionLotSelections || {},
+    decisionStockMap: window._decisionStockMap || {}
   };
+}
+
+// ── Changement de lot dans le sélecteur décision ──
+function onDecisionLotChange(ingId, stockId) {
+  if (!window._decisionLotSelections) window._decisionLotSelections = {};
+  if (!stockId) {
+    delete window._decisionLotSelections[ingId];
+  } else {
+    const stockMap = window._decisionStockMap || {};
+    const ing = ING.find(x => x.id == ingId);
+    if (ing) {
+      const key = String(ing.nom || '').trim().toLowerCase();
+      const lots = stockMap[key] || [];
+      const found = lots.find(s => String(s.id_stock) === String(stockId));
+      if (found) {
+        window._decisionLotSelections[ingId] = {
+          stockId: found.id_stock,
+          lot: found.lot,
+          dlc: found.dlc_ddm,
+          prix_unitaire: parseFloat(String(found.prix_unitaire || '0').replace(',', '.')) || 0
+        };
+      }
+    }
+  }
+  calcDecision();
 }
 
 // ── Export PDF complet ──
